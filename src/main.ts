@@ -1,10 +1,13 @@
 import Phaser from 'phaser';
 import { createGameConfig } from './game/Game';
 import { AudioSystem } from './game/systems/AudioSystem';
+import { TelevisionPowerSystem } from './tv/TelevisionPowerSystem';
 import './styles/global.css';
 import './ui/cards.css';
 
-const game = new Phaser.Game(createGameConfig());
+const television = new TelevisionPowerSystem({
+  createGame: () => new Phaser.Game(createGameConfig()),
+});
 
 const unlockAudio = (): void => {
   AudioSystem.instance.unlock();
@@ -13,7 +16,7 @@ const unlockAudio = (): void => {
 
 // Capture runs before Phaser's pointer handler, so the very first jump can be heard.
 window.addEventListener('pointerdown', unlockAudio, { capture: true, passive: true });
-window.addEventListener('beforeunload', () => game.destroy(true));
+window.addEventListener('beforeunload', () => television.destroy());
 
 if (navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches) {
   document.body.classList.add('touch-device');

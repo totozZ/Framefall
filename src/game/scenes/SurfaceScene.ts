@@ -306,23 +306,25 @@ export class SurfaceScene extends Phaser.Scene {
   }
 
   private createIntroReveal(): void {
-    // The iris lives in the DOM so it covers letterboxing and every canvas
-    // element consistently. This also avoids browser-specific WebGL mask stalls.
+    // Keep the iris inside the television glass while covering every canvas pixel.
     const veil = document.createElement('div');
+    const program = document.querySelector<HTMLElement>('#tv-program');
+    if (!program) throw new Error('Television program element is missing.');
     veil.setAttribute('aria-hidden', 'true');
     Object.assign(veil.style, {
-      position: 'fixed',
+      position: 'absolute',
       inset: '0',
       zIndex: '50',
       pointerEvents: 'none',
       background: '#000',
     });
-    document.body.append(veil);
+    program.append(veil);
 
     const canvas = this.game.canvas;
     const bounds = canvas.getBoundingClientRect();
-    const targetX = bounds.left + (this.player.x / 320) * bounds.width;
-    const targetY = bounds.top + ((this.player.y - 10) / 180) * bounds.height;
+    const programBounds = program.getBoundingClientRect();
+    const targetX = bounds.left - programBounds.left + (this.player.x / 320) * bounds.width;
+    const targetY = bounds.top - programBounds.top + ((this.player.y - 10) / 180) * bounds.height;
     const aperture = { x: -40, y: targetY, radius: 0 };
     const redrawVeil = (): void => {
       const mask = `radial-gradient(circle ${aperture.radius}px at ${aperture.x}px ${aperture.y}px, transparent 0 ${aperture.radius}px, #000 ${aperture.radius + 1}px)`;
@@ -345,7 +347,7 @@ export class SurfaceScene extends Phaser.Scene {
             AudioSystem.instance.play('introReveal');
             this.tweens.add({
               targets: aperture,
-              radius: Math.hypot(window.innerWidth, window.innerHeight),
+              radius: Math.hypot(programBounds.width, programBounds.height),
               duration: 720,
               ease: 'Cubic.In',
               onUpdate: redrawVeil,

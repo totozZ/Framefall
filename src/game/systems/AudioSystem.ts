@@ -4,7 +4,8 @@ export type SoundEvent =
   | 'hydrantHit1' | 'hydrantHit2' | 'hydrantHit3' | 'hydrantBreak'
   | 'waterBurst' | 'waterLoop' | 'waterSplash'
   | 'wellEnter' | 'fallWind' | 'crtDistortion' | 'caveImpact' | 'dizzy'
-  | 'candleIgnite' | 'finalCardPickup';
+  | 'candleIgnite' | 'finalCardPickup'
+  | 'tvSwitch' | 'tvPowerOn' | 'tvPowerOff';
 
 type AmbienceKind = 'surface' | 'cave';
 
@@ -27,10 +28,13 @@ export class AudioSystem {
   private requestedAmbience: AmbienceKind | null = null;
   private ambienceTimer: number | null = null;
   private musicStep = 0;
+  private televisionNoiseNodes: AudioNode[] = [];
+  private televisionNoiseGain: GainNode | null = null;
+  private televisionNoiseSource: AudioBufferSourceNode | null = null;
 
   private constructor() {}
 
-  public unlock(): void {
+  public unlock(resumeAmbience = true): void {
     if (!this.context) {
       this.context = new AudioContext();
       this.master = this.context.createGain();
@@ -38,7 +42,7 @@ export class AudioSystem {
       this.master.connect(this.context.destination);
     }
     void this.context.resume().then(() => {
-      if (this.requestedAmbience && this.ambienceNodes.length === 0) {
+      if (resumeAmbience && this.requestedAmbience && this.ambienceNodes.length === 0) {
         this.startAmbienceNow(this.requestedAmbience);
       }
     });
@@ -67,6 +71,9 @@ export class AudioSystem {
       dizzy: { frequency: 610, endFrequency: 430, duration: 0.3, gain: 0.06, type: 'sine', harmonic: 1.5 },
       candleIgnite: { frequency: 260, endFrequency: 620, duration: 0.18, gain: 0.065, type: 'triangle', noise: 0.18 },
       finalCardPickup: { frequency: 220, endFrequency: 880, duration: 0.72, gain: 0.09, type: 'sine', harmonic: 2 },
+      tvSwitch: { frequency: 145, endFrequency: 48, duration: 0.075, gain: 0.13, type: 'square', harmonic: 0.5, noise: 0.72 },
+      tvPowerOn: { frequency: 42, endFrequency: 155, duration: 0.76, gain: 0.1, type: 'sawtooth', harmonic: 2, noise: 0.34 },
+      tvPowerOff: { frequency: 210, endFrequency: 26, duration: 0.68, gain: 0.12, type: 'sawtooth', harmonic: 0.5, noise: 0.48 },
     };
     if (this.context?.state === 'suspended') void this.context.resume();
     this.tone(shapes[event]);
@@ -87,6 +94,74 @@ export class AudioSystem {
       try { node.disconnect(); } catch { /* already disconnected */ }
     });
     this.ambienceNodes = [];
+  }
+
+  public suspendForTelevision(): void {
+    this.stopAmbience();
+    this.stopTelevisionStatic();
+  }
+
+  public resumeForTelevision(): void {
+    if (this.requestedAmbience && this.context?.state === 'running') {
+      this.startAmbienceNow(this.requestedAmbience);
+    }
+  }
+
+  public startTelevisionStatic(): void {
+    const context = this.context;
+    const master = this.master;
+    if (!context || !master || this.televisionNoiseSource) return;
+
+    const duration = 1.5;
+    const buffer = context.createBuffer(1, Math.floor(context.sampleRate * duration), context.sampleRate);
+    const samples = buffer.getChannelData(0);
+    let previous = 0;
+    for (let index = 0; index < samples.length; index += 1) {
+      const white = Math.random() * 2 - 1;
+      previous = previous * 0.12 + white * 0.88;
+      samples[index] = previous;
+    }
+
+    const source = context.createBufferSource();
+    const highpass = context.createBiquadFilter();
+    const lowpass = context.createBiquadFilter();
+    const gain = context.createGain();
+    const now = context.currentTime;
+    source.buffer = buffer;
+    source.loop = true;
+    highpass.type = 'highpass';
+    highpass.frequency.value = 540;
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 6200;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.085, now + 0.08);
+    source.connect(highpass).connect(lowpass).connect(gain).connect(master);
+    source.start(now);
+    this.televisionNoiseSource = source;
+    this.televisionNoiseGain = gain;
+    this.televisionNoiseNodes = [source, highpass, lowpass, gain];
+  }
+
+  public stopTelevisionStatic(): void {
+    const context = this.context;
+    const source = this.televisionNoiseSource;
+    const gain = this.televisionNoiseGain;
+    const nodes = this.televisionNoiseNodes;
+    this.televisionNoiseSource = null;
+    this.televisionNoiseGain = null;
+    this.televisionNoiseNodes = [];
+    if (!context || !source || !gain) return;
+
+    const now = context.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+    try { source.stop(now + 0.12); } catch { /* already stopped */ }
+    window.setTimeout(() => {
+      nodes.forEach((node) => {
+        try { node.disconnect(); } catch { /* already disconnected */ }
+      });
+    }, 160);
   }
 
   private tone(shape: ToneShape): void {

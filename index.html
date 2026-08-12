@@ -10,13 +10,58 @@
   </head>
   <body>
     <main id="game-shell" aria-label="Interactive portfolio game">
-      <div id="game-container"></div>
-      <div id="crt-overlay" aria-hidden="true"></div>
-      <section id="card-overlay" aria-live="polite" aria-hidden="true"></section>
-      <div id="controls-hint" class="is-hidden" aria-hidden="true">
-        <span>MOVE</span> FOLLOW THE CURSOR <i></i> <span>JUMP</span> LEFT CLICK
-      </div>
-      <div id="touch-notice">Best experienced with a mouse.</div>
+      <section id="tv-set" aria-label="Framefall on a vintage television">
+        <div class="tv-cabinet">
+          <div class="tv-screen-bezel">
+            <div id="tv-screen" data-power-state="OFF">
+              <div id="tv-picture">
+                <div id="tv-program">
+                  <div id="game-container"></div>
+                  <section id="card-overlay" aria-live="polite" aria-hidden="true"></section>
+                  <div id="controls-hint" class="is-hidden" aria-hidden="true">
+                    <span>MOVE</span> FOLLOW THE CURSOR <i></i> <span>JUMP</span> LEFT CLICK
+                  </div>
+                  <div id="touch-notice">Best experienced with a mouse.</div>
+                </div>
+                <div id="crt-overlay" aria-hidden="true"></div>
+              </div>
+              <div id="tv-static" class="is-visible" aria-hidden="true">
+                <canvas width="160" height="90"></canvas>
+                <i></i>
+              </div>
+              <div id="tv-power-fx" aria-hidden="true">
+                <i class="tv-boot-flare"></i>
+                <i class="tv-shutdown-line"></i>
+                <i class="tv-afterglow"></i>
+              </div>
+            </div>
+          </div>
+          <aside class="tv-console">
+            <p class="tv-brand" aria-hidden="true">FRAMEFALL</p>
+            <div class="tv-channel" aria-hidden="true"><small>UHF</small><strong>08</strong></div>
+            <div class="tv-dials" aria-hidden="true">
+              <i class="tv-dial tv-dial-channel"></i>
+              <i class="tv-dial tv-dial-volume"></i>
+            </div>
+            <div class="tv-speaker" aria-hidden="true"></div>
+            <div class="tv-power-panel">
+              <button id="tv-power-switch" class="tv-rocker" type="button" aria-label="Turn television on" aria-pressed="false">
+                <span class="tv-rocker-face">
+                  <i class="tv-rocker-side tv-rocker-on">I</i>
+                  <i class="tv-rocker-side tv-rocker-off">O</i>
+                </span>
+              </button>
+              <div class="tv-power-status" aria-hidden="true">
+                <i class="tv-power-led"></i>
+                <span>STANDBY</span>
+              </div>
+            </div>
+          </aside>
+          <i class="tv-screw screw-tl"></i>
+          <i class="tv-screw screw-br"></i>
+        </div>
+        <div class="tv-feet" aria-hidden="true"><i></i><i></i></div>
+      </section>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
