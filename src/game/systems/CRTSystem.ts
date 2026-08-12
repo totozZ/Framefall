@@ -9,6 +9,8 @@ export class CRTSystem {
     this.root.style.setProperty('--crt-scanline', String(CRT_CONFIG.scanlineOpacity));
     this.root.style.setProperty('--crt-noise', String(CRT_CONFIG.noiseOpacity));
     this.root.style.setProperty('--crt-vignette', String(CRT_CONFIG.vignetteOpacity));
+    this.root.style.setProperty('--crt-mask', String(CRT_CONFIG.phosphorMaskOpacity));
+    this.root.style.setProperty('--crt-roll', String(CRT_CONFIG.rollingBandOpacity));
     this.root.style.setProperty('--crt-shift', `${CRT_CONFIG.baseAberrationPx}px`);
   }
 

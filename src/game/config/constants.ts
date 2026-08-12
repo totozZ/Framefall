@@ -23,9 +23,11 @@ export const CARD_CONFIG = {
 } as const;
 
 export const CRT_CONFIG = {
-  scanlineOpacity: 0.1,
-  noiseOpacity: 0.035,
-  vignetteOpacity: 0.72,
+  scanlineOpacity: 0.18,
+  noiseOpacity: 0.05,
+  vignetteOpacity: 0.78,
+  phosphorMaskOpacity: 0.055,
+  rollingBandOpacity: 0.14,
   flickerDurationMs: 4100,
   baseAberrationPx: 0.35,
   maxDistortionPx: 9,

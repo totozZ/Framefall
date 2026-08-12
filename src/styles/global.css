@@ -3,9 +3,11 @@
   background: #020309;
   font-family: "Courier New", ui-monospace, monospace;
   font-synthesis: none;
-  --crt-scanline: 0.1;
-  --crt-noise: 0.035;
-  --crt-vignette: 0.72;
+  --crt-scanline: 0.18;
+  --crt-noise: 0.05;
+  --crt-vignette: 0.78;
+  --crt-mask: 0.055;
+  --crt-roll: 0.14;
   --crt-shift: 0.35px;
   --crt-distortion: 0;
 }
@@ -39,23 +41,32 @@ body {
   display: grid;
   place-items: center;
   transform: translateX(calc(var(--crt-distortion) * 1px));
-  filter: saturate(0.96) contrast(1.035);
+  filter: saturate(0.91) contrast(1.085) brightness(0.97);
 }
 
 #game-container canvas {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  box-shadow: 0 0 80px rgb(10 18 29 / 35%);
+  border-radius: 1.6% / 2.4%;
+  box-shadow:
+    0 0 80px rgb(10 18 29 / 35%),
+    0 0 18px rgb(116 177 171 / 5%);
 }
 
 #crt-overlay {
   position: fixed;
-  z-index: 20;
+  z-index: 80;
   inset: 0;
   pointer-events: none;
   opacity: 1;
   background:
+    repeating-linear-gradient(
+      to right,
+      rgb(255 67 88 / calc(var(--crt-mask) * 0.82)) 0 1px,
+      rgb(72 255 152 / calc(var(--crt-mask) * 0.55)) 1px 2px,
+      rgb(69 126 255 / var(--crt-mask)) 2px 3px
+    ),
     repeating-linear-gradient(
       to bottom,
       rgb(4 9 13 / 0%) 0,
@@ -76,21 +87,35 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
   background-size: 190px 110px;
   animation: noise-step 650ms steps(2, end) infinite;
+  mix-blend-mode: soft-light;
 }
 
 #crt-overlay::after {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: calc(var(--crt-distortion) * 0.09);
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0 13px,
-    rgb(56 230 255 / 20%) 14px 15px,
-    transparent 16px 31px,
-    rgb(255 51 118 / 16%) 32px 34px
-  );
+  opacity: calc(var(--crt-roll) + var(--crt-distortion) * 0.12);
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 0 39%,
+      rgb(160 222 218 / 8%) 45%,
+      rgb(210 242 226 / 30%) 49%,
+      rgb(117 191 200 / 12%) 52%,
+      transparent 59% 100%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 13px,
+      rgb(56 230 255 / 20%) 14px 15px,
+      transparent 16px 31px,
+      rgb(255 51 118 / 16%) 32px 34px
+    );
+  background-size: 100% 220px, 100% 34px;
+  background-position: 0 -220px, 0 0;
   transform: translateX(calc(var(--crt-distortion) * -2px));
+  animation: crt-roll 6.8s linear infinite;
+  mix-blend-mode: screen;
 }
 
 body.crt-distorting #game-container {
@@ -149,9 +174,10 @@ body.crt-distorting #game-container {
 }
 
 @keyframes crt-flicker {
-  0%, 94%, 100% { opacity: 1; }
-  95% { opacity: 0.975; }
-  97% { opacity: 0.99; }
+  0%, 91%, 100% { opacity: 1; }
+  92% { opacity: 0.968; }
+  94% { opacity: 0.992; }
+  96% { opacity: 0.978; }
 }
 
 @keyframes noise-step {
@@ -166,9 +192,15 @@ body.crt-distorting #game-container {
   70% { transform: translate(calc(var(--crt-distortion) * -0.7px), 1px) skewX(0.1deg); }
 }
 
+@keyframes crt-roll {
+  from { background-position: 0 -220px, 0 0; }
+  to { background-position: 0 calc(100vh + 220px), 0 34px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   #crt-overlay,
   #crt-overlay::before,
+  #crt-overlay::after,
   body.crt-distorting #game-container {
     animation: none;
   }

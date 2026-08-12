@@ -8,10 +8,11 @@ const game = new Phaser.Game(createGameConfig());
 
 const unlockAudio = (): void => {
   AudioSystem.instance.unlock();
-  window.removeEventListener('pointerdown', unlockAudio);
+  window.removeEventListener('pointerdown', unlockAudio, true);
 };
 
-window.addEventListener('pointerdown', unlockAudio, { passive: true });
+// Capture runs before Phaser's pointer handler, so the very first jump can be heard.
+window.addEventListener('pointerdown', unlockAudio, { capture: true, passive: true });
 window.addEventListener('beforeunload', () => game.destroy(true));
 
 if (navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches) {

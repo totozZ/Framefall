@@ -73,8 +73,13 @@ export class BootScene extends Phaser.Scene {
 
     // A low, four-footed silhouette. The nearly-black outline keeps the rabbit
     // readable as a creature without turning it into a bright mascot.
+    const bodyHeight = compressed ? 7 : 9;
+    const innerBodyHeight = compressed ? 5 : 7;
     graphics.fillStyle(0x020207, 1);
-    graphics.fillRect(3, bodyY - 1, 16, compressed ? 7 : 9);
+    // Stepped corners shorten the rump and keep it round at native pixel size.
+    graphics.fillRect(5, bodyY - 1, 14, 1);
+    graphics.fillRect(4, bodyY, 15, bodyHeight - 2);
+    graphics.fillRect(5, bodyY + bodyHeight - 2, 14, 1);
     graphics.fillRect(17, bodyY - 3, 7, compressed ? 7 : 9);
     if (pose === 'jump') {
       graphics.fillRect(15, 3, 6, 2);
@@ -86,10 +91,14 @@ export class BootScene extends Phaser.Scene {
       graphics.fillRect(18, 1 + bob, 2, 6);
       graphics.fillRect(index === 1 ? 20 : 21, index === 1 ? 1 : 2, 2, index === 1 ? 6 : 5);
     }
-    graphics.fillRect(1, bodyY + 1, 4, 4);
+    graphics.fillRect(2, bodyY + 1, 3, 1);
+    graphics.fillRect(1, bodyY + 2, 4, 2);
+    graphics.fillRect(2, bodyY + 4, 3, 1);
 
     graphics.fillStyle(0x12091c, 1);
-    graphics.fillRect(4, bodyY, 14, compressed ? 5 : 7);
+    graphics.fillRect(6, bodyY, 12, 1);
+    graphics.fillRect(5, bodyY + 1, 13, innerBodyHeight - 2);
+    graphics.fillRect(6, bodyY + innerBodyHeight - 1, 12, 1);
     graphics.fillRect(18, bodyY - 2, 5, compressed ? 5 : 7);
     if (pose === 'jump') {
       graphics.fillRect(16, 4, 5, 1);
@@ -99,7 +108,7 @@ export class BootScene extends Phaser.Scene {
       graphics.fillRect(index === 1 ? 21 : 22, 2 + bob, 1, 5);
     }
     graphics.fillStyle(0x281237, 1);
-    graphics.fillRect(6, bodyY + 1, 10, 3);
+    graphics.fillRect(7, bodyY + 1, 9, 3);
     graphics.fillRect(19, bodyY - 1, 3, 2);
     graphics.fillStyle(pose === 'dizzy' ? 0xc9a64b : 0x82c9c7, 1);
     graphics.fillRect(22, bodyY, 1, 1);
@@ -112,7 +121,7 @@ export class BootScene extends Phaser.Scene {
       graphics.fillRect(tucked ? 16 : 17, tucked ? 13 : 14, 3, 2);
       graphics.fillRect(tucked ? 20 : 21, tucked ? 12 : 15, 3, 2);
     } else {
-      [4, 9, 16, 21].forEach((x) => {
+      [5, 9, 16, 21].forEach((x) => {
         graphics.fillRect(x, bellyY, 2, compressed ? 2 : 3);
         graphics.fillRect(x - 1, 16, 4, 1);
       });
@@ -139,7 +148,7 @@ export class BootScene extends Phaser.Scene {
     // Separating near/far legs by one shade keeps all four readable in profile.
     const frames: GallopFrame[] = [
       {
-        bodyX: 3, bodyY: 8, bodyWidth: 16, headY: 6, tailY: 9, earPose: 'upright',
+        bodyX: 4, bodyY: 8, bodyWidth: 15, headY: 6, tailY: 9, earPose: 'upright',
         legs: [
           { x: 3, y: 14, width: 3, toeX: 1, far: false },
           { x: 8, y: 14, width: 3, toeX: 7, far: true },
@@ -148,7 +157,7 @@ export class BootScene extends Phaser.Scene {
         ],
       },
       {
-        bodyX: 4, bodyY: 7, bodyWidth: 15, headY: 5, tailY: 8, earPose: 'back',
+        bodyX: 5, bodyY: 7, bodyWidth: 14, headY: 5, tailY: 8, earPose: 'back',
         legs: [
           { x: 1, y: 13, width: 4, toeX: 0, far: false },
           { x: 6, y: 14, width: 3, toeX: 4, far: true },
@@ -157,7 +166,7 @@ export class BootScene extends Phaser.Scene {
         ],
       },
       {
-        bodyX: 4, bodyY: 6, bodyWidth: 16, headY: 4, tailY: 7, earPose: 'flat',
+        bodyX: 5, bodyY: 6, bodyWidth: 15, headY: 4, tailY: 7, earPose: 'flat',
         legs: [
           { x: 1, y: 12, width: 5, toeX: 0, far: false },
           { x: 5, y: 13, width: 4, toeX: 3, far: true },
@@ -166,7 +175,7 @@ export class BootScene extends Phaser.Scene {
         ],
       },
       {
-        bodyX: 5, bodyY: 6, bodyWidth: 14, headY: 5, tailY: 7, earPose: 'back',
+        bodyX: 6, bodyY: 6, bodyWidth: 13, headY: 5, tailY: 7, earPose: 'back',
         legs: [
           { x: 6, y: 12, width: 3, toeX: 7, far: false },
           { x: 9, y: 13, width: 3, toeX: 8, far: true },
@@ -175,7 +184,7 @@ export class BootScene extends Phaser.Scene {
         ],
       },
       {
-        bodyX: 4, bodyY: 7, bodyWidth: 15, headY: 5, tailY: 8, earPose: 'rebound',
+        bodyX: 5, bodyY: 7, bodyWidth: 14, headY: 5, tailY: 8, earPose: 'rebound',
         legs: [
           { x: 5, y: 13, width: 3, toeX: 4, far: true },
           { x: 8, y: 13, width: 3, toeX: 7, far: false },
@@ -184,7 +193,7 @@ export class BootScene extends Phaser.Scene {
         ],
       },
       {
-        bodyX: 3, bodyY: 8, bodyWidth: 16, headY: 6, tailY: 8, earPose: 'upright',
+        bodyX: 4, bodyY: 8, bodyWidth: 15, headY: 6, tailY: 8, earPose: 'upright',
         legs: [
           { x: 2, y: 14, width: 3, toeX: 0, far: true },
           { x: 7, y: 14, width: 3, toeX: 5, far: false },
@@ -202,13 +211,19 @@ export class BootScene extends Phaser.Scene {
     frame.legs.filter((leg) => leg.far).forEach((leg) => this.drawGallopLeg(graphics, leg, 0x241232));
 
     graphics.fillStyle(0x020207, 1);
-    graphics.fillRect(frame.bodyX - 1, frame.bodyY - 1, frame.bodyWidth + 2, 9);
+    graphics.fillRect(frame.bodyX, frame.bodyY - 1, frame.bodyWidth, 1);
+    graphics.fillRect(frame.bodyX - 1, frame.bodyY, frame.bodyWidth + 1, 7);
+    graphics.fillRect(frame.bodyX, frame.bodyY + 7, frame.bodyWidth, 1);
     graphics.fillRect(17, frame.headY, 7, 8);
-    graphics.fillRect(0, frame.tailY, 5, 4);
+    graphics.fillRect(2, frame.tailY, 3, 1);
+    graphics.fillRect(1, frame.tailY + 1, 4, 2);
+    graphics.fillRect(2, frame.tailY + 3, 3, 1);
     graphics.fillStyle(0x11091b, 1);
-    graphics.fillRect(frame.bodyX, frame.bodyY, frame.bodyWidth, 7);
+    graphics.fillRect(frame.bodyX + 1, frame.bodyY, frame.bodyWidth - 2, 1);
+    graphics.fillRect(frame.bodyX, frame.bodyY + 1, frame.bodyWidth, 5);
+    graphics.fillRect(frame.bodyX + 1, frame.bodyY + 6, frame.bodyWidth - 2, 1);
     graphics.fillRect(18, frame.headY + 1, 5, 6);
-    graphics.fillRect(1, frame.tailY + 1, 3, 2);
+    graphics.fillRect(2, frame.tailY + 1, 2, 2);
     graphics.fillStyle(0x271137, 1);
     graphics.fillRect(frame.bodyX + 3, frame.bodyY + 1, frame.bodyWidth - 5, 3);
     graphics.fillRect(19, frame.headY + 2, 3, 2);
