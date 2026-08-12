@@ -1,12 +1,14 @@
 #card-overlay {
-  position: absolute;
-  z-index: 60;
+  position: fixed;
+  z-index: 200;
   inset: 0;
   display: none;
   align-items: center;
   justify-content: flex-end;
-  padding: clamp(12px, 4cqw, 54px);
+  overflow: hidden;
+  padding: clamp(24px, 5vw, 76px);
   background: linear-gradient(90deg, rgb(0 2 6 / 20%), rgb(0 0 0 / 62%));
+  backdrop-filter: blur(2px) brightness(0.62);
   pointer-events: none;
 }
 
@@ -17,12 +19,16 @@
 
 .relic-card {
   position: relative;
-  width: min(62cqw, 680px);
-  min-width: min(420px, 88cqw);
-  height: min(90cqh, 700px);
-  min-height: 0;
-  overflow: hidden;
-  padding: clamp(18px, 3.4cqw, 50px);
+  width: min(48vw, 720px);
+  min-width: 510px;
+  height: min(80dvh, 760px);
+  min-height: 500px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #715a2f #111115;
+  scrollbar-width: thin;
+  padding: clamp(34px, 4.2vw, 68px);
   border: 2px solid #b78c3b;
   outline: 7px solid #08090d;
   color: #d9d6c8;
@@ -102,7 +108,7 @@
 }
 
 .card-eyebrow {
-  margin-top: clamp(22px, 5cqh, 48px);
+  margin-top: clamp(48px, 7vh, 86px);
   color: #c9a85c;
 }
 
@@ -112,7 +118,7 @@
   max-width: 92%;
   margin: 12px 0 14px;
   color: #eee7d2;
-  font-size: clamp(20px, 4cqw, 50px);
+  font-size: clamp(31px, 3vw, 57px);
   line-height: 0.98;
   letter-spacing: -0.055em;
   text-shadow: 2px 2px 0 #4b3923, 0 0 20px rgb(216 174 89 / 14%);
@@ -122,10 +128,10 @@
   position: relative;
   z-index: 1;
   max-width: 42ch;
-  margin: 0 0 clamp(10px, 2.2cqh, 20px);
+  margin: 0 0 24px;
   color: #a7aaa4;
-  font-size: clamp(9px, 1.65cqw, 15px);
-  line-height: 1.45;
+  font-size: clamp(12px, 1vw, 16px);
+  line-height: 1.6;
 }
 
 .card-rule {
@@ -133,7 +139,7 @@
   z-index: 1;
   width: 100%;
   height: 1px;
-  margin: clamp(8px, 1.8cqh, 16px) 0 clamp(10px, 2.2cqh, 19px);
+  margin: 18px 0 24px;
   background: linear-gradient(90deg, #9a7737, transparent);
 }
 
@@ -142,8 +148,8 @@
   z-index: 1;
   max-width: 58ch;
   color: #bbb9ae;
-  font-size: clamp(8px, 1.45cqw, 14px);
-  line-height: 1.48;
+  font-size: clamp(11px, 0.9vw, 15px);
+  line-height: 1.62;
 }
 
 .card-body p {
@@ -157,7 +163,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: clamp(10px, 2.3cqh, 20px);
+  margin-top: 25px;
 }
 
 .card-tags span,
@@ -201,9 +207,50 @@
 }
 
 @media (max-width: 900px) {
-  #card-overlay { justify-content: center; padding: 3cqw; }
-  .relic-card { width: 88cqw; min-width: 0; height: 90cqh; min-height: 0; }
+  #card-overlay {
+    align-items: center;
+    justify-content: center;
+    padding:
+      max(10px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+    background: rgb(0 1 4 / 88%);
+  }
+  .relic-card {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    padding: clamp(24px, 7vw, 46px);
+    outline-width: 3px;
+  }
+  .card-close {
+    position: sticky;
+    top: 0;
+    float: right;
+    margin: -8px -8px 8px 12px;
+  }
+  .card-eyebrow { margin-top: clamp(34px, 7dvh, 64px); }
+  .relic-card h1 { font-size: clamp(28px, 9vw, 48px); }
+  .card-subtitle { font-size: clamp(12px, 3.8vw, 16px); }
+  .card-body { font-size: clamp(11px, 3.5vw, 15px); }
   #controls-hint { display: none; }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  #card-overlay {
+    padding:
+      max(8px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+  .relic-card { padding: 24px clamp(28px, 6vw, 52px); }
+  .card-eyebrow { margin-top: 20px; }
+  .relic-card h1 { font-size: clamp(26px, 5vw, 44px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
