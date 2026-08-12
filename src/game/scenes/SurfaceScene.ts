@@ -15,6 +15,13 @@ interface SurfaceSceneData {
   previewX?: number;
 }
 
+interface BackgroundStar {
+  sprite: Phaser.GameObjects.Image;
+  phase: number;
+  baseAlpha: number;
+  speed: number;
+}
+
 export class SurfaceScene extends Phaser.Scene {
   private state = GameState.INTRO;
   private player!: Player;
@@ -27,6 +34,7 @@ export class SurfaceScene extends Phaser.Scene {
   private cameraEffects!: CameraEffects;
   private hintTimer?: Phaser.Time.TimerEvent;
   private cloudSprites: Phaser.GameObjects.Sprite[] = [];
+  private backgroundStars: BackgroundStar[] = [];
   private skipIntro = false;
   private startX = 64;
 
@@ -51,6 +59,7 @@ export class SurfaceScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, SURFACE.width, 260);
     this.cameras.main.setBounds(0, 0, SURFACE.width, 180).setRoundPixels(true);
     this.drawSurfaceWorld();
+    this.createStarLayer();
     this.createCloudLayer();
     const platforms = this.createPlatforms();
 
@@ -101,6 +110,7 @@ export class SurfaceScene extends Phaser.Scene {
     this.particles.update(delta);
     this.water.update(time, delta, this.player);
     this.updateClouds(time);
+    this.updateStars(time);
 
     const velocityX = (this.player.body as Phaser.Physics.Arcade.Body).velocity.x;
     this.cameras.main.setFollowOffset(-Math.sign(velocityX) * CAMERA_CONFIG.lookAhead, 0);
@@ -127,10 +137,10 @@ export class SurfaceScene extends Phaser.Scene {
     const sky = this.add.graphics().setDepth(-20).setScrollFactor(0.12);
     sky.fillGradientStyle(0x080a11, 0x080a11, 0x171923, 0x171923, 1);
     sky.fillRect(-80, 0, SURFACE.width + 180, 180);
-    for (let index = 0; index < 72; index += 1) {
+    for (let index = 0; index < 38; index += 1) {
       const x = (index * 83 + 29) % (SURFACE.width + 120);
       const y = 15 + ((index * 47) % 105);
-      const alpha = 0.05 + (index % 4) * 0.018;
+      const alpha = 0.025 + (index % 4) * 0.011;
       sky.fillStyle(index % 7 === 0 ? 0x766c61 : 0x515763, alpha).fillRect(x, y, index % 5 === 0 ? 2 : 1, 1);
     }
 
@@ -210,10 +220,42 @@ export class SurfaceScene extends Phaser.Scene {
     });
   }
 
+  private createStarLayer(): void {
+    const placements = [
+      [18, 23], [47, 57], [72, 17], [101, 78], [128, 34],
+      [151, 18], [177, 62], [202, 30], [226, 88], [254, 19],
+      [282, 65], [307, 31], [35, 96], [89, 43], [137, 91],
+      [188, 48], [271, 98], [316, 76],
+    ] as const;
+    this.backgroundStars = placements.map(([x, y], index) => {
+      const isCross = index === 2 || index === 9 || index === 15;
+      const sprite = this.add.image(x, y, isCross ? 'pixel-star-cross' : 'pixel-star')
+        .setScrollFactor(0)
+        .setDepth(-19)
+        .setTint(index % 5 === 0 ? 0xc1bbb0 : index % 3 === 0 ? 0x8fa4ad : 0xa5adb0);
+      const baseAlpha = isCross ? 0.28 : 0.16 + (index % 4) * 0.045;
+      sprite.setAlpha(baseAlpha);
+      return {
+        sprite,
+        baseAlpha,
+        phase: index * 1.73,
+        speed: 0.0011 + (index % 5) * 0.00017,
+      };
+    });
+  }
+
   private updateClouds(time: number): void {
     this.cloudSprites.forEach((cloud, index) => {
       cloud.setAlpha(0.39 + Math.sin(time * 0.00035 + index) * 0.045);
       if (Math.floor(time / 850) % 2 === index % 2) cloud.setTexture(`cloud-${(index + Math.floor(time / 850)) % 2}`);
+    });
+  }
+
+  private updateStars(time: number): void {
+    this.backgroundStars.forEach((star, index) => {
+      const slowPulse = Math.sin(time * star.speed + star.phase) * 0.09;
+      const occasionalGlimmer = Math.max(0, Math.sin(time * 0.00043 + index * 2.31)) ** 8 * 0.18;
+      star.sprite.setAlpha(Phaser.Math.Clamp(star.baseAlpha + slowPulse + occasionalGlimmer, 0.08, 0.55));
     });
   }
 

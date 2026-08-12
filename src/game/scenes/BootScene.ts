@@ -37,6 +37,8 @@ export class BootScene extends Phaser.Scene {
       { key: 'player-run-1', pose: 'run', index: 1 },
       { key: 'player-run-2', pose: 'run', index: 2 },
       { key: 'player-run-3', pose: 'run', index: 3 },
+      { key: 'player-run-4', pose: 'run', index: 4 },
+      { key: 'player-run-5', pose: 'run', index: 5 },
       { key: 'player-jump', pose: 'jump', index: 0 },
       { key: 'player-fall', pose: 'fall', index: 0 },
       { key: 'player-land', pose: 'land', index: 0 },
@@ -57,6 +59,11 @@ export class BootScene extends Phaser.Scene {
     pose: 'idle' | 'run' | 'jump' | 'fall' | 'land' | 'dizzy',
     index: number,
   ): void {
+    if (pose === 'run') {
+      this.drawRunningRabbit(graphics, index);
+      return;
+    }
+
     const bob = pose === 'idle' && index === 1 ? 1 : 0;
     const compressed = pose === 'land';
     const airborne = pose === 'jump' || pose === 'fall';
@@ -68,15 +75,28 @@ export class BootScene extends Phaser.Scene {
     graphics.fillStyle(0x020207, 1);
     graphics.fillRect(3, bodyY - 1, 16, compressed ? 7 : 9);
     graphics.fillRect(17, bodyY - 3, 7, compressed ? 7 : 9);
-    graphics.fillRect(18, 1 + bob, 2, 6);
-    graphics.fillRect(21, 2 + bob, 2, 5);
+    if (pose === 'jump') {
+      graphics.fillRect(15, 3, 6, 2);
+      graphics.fillRect(16, 1, 6, 2);
+    } else if (pose === 'fall') {
+      graphics.fillRect(18, 0, 2, 7);
+      graphics.fillRect(21, 1, 2, 6);
+    } else {
+      graphics.fillRect(18, 1 + bob, 2, 6);
+      graphics.fillRect(index === 1 ? 20 : 21, index === 1 ? 1 : 2, 2, index === 1 ? 6 : 5);
+    }
     graphics.fillRect(1, bodyY + 1, 4, 4);
 
     graphics.fillStyle(0x12091c, 1);
     graphics.fillRect(4, bodyY, 14, compressed ? 5 : 7);
     graphics.fillRect(18, bodyY - 2, 5, compressed ? 5 : 7);
-    graphics.fillRect(19, 2 + bob, 1, 5);
-    graphics.fillRect(22, 3 + bob, 1, 4);
+    if (pose === 'jump') {
+      graphics.fillRect(16, 4, 5, 1);
+      graphics.fillRect(17, 2, 5, 1);
+    } else {
+      graphics.fillRect(19, 2 + bob, 1, 5);
+      graphics.fillRect(index === 1 ? 21 : 22, 2 + bob, 1, 5);
+    }
     graphics.fillStyle(0x281237, 1);
     graphics.fillRect(6, bodyY + 1, 10, 3);
     graphics.fillRect(19, bodyY - 1, 3, 2);
@@ -90,17 +110,6 @@ export class BootScene extends Phaser.Scene {
       graphics.fillRect(tucked ? 10 : 9, tucked ? 14 : 15, 4, 2);
       graphics.fillRect(tucked ? 16 : 17, tucked ? 13 : 14, 3, 2);
       graphics.fillRect(tucked ? 20 : 21, tucked ? 12 : 15, 3, 2);
-    } else if (pose === 'run') {
-      const phase = index % 4;
-      const legOffsets = phase === 0 ? [2, 8, 15, 20]
-        : phase === 1 ? [4, 10, 17, 21]
-          : phase === 2 ? [1, 7, 14, 19]
-            : [4, 9, 16, 22];
-      legOffsets.forEach((x, leg) => {
-        const reach = (phase + leg) % 2 === 0 ? 2 : 1;
-        graphics.fillRect(x, bellyY, reach + 2, 2);
-        graphics.fillRect(x + (leg < 2 ? -reach : reach), bellyY + 2, 3, 1);
-      });
     } else {
       [4, 9, 16, 21].forEach((x) => {
         graphics.fillRect(x, bellyY, 2, compressed ? 2 : 3);
@@ -112,6 +121,136 @@ export class BootScene extends Phaser.Scene {
       graphics.fillStyle(0x38253f, 1);
       graphics.fillRect(index === 0 ? 2 : 3, bodyY + 2, 2, 1);
     }
+  }
+
+  private drawRunningRabbit(graphics: Phaser.GameObjects.Graphics, index: number): void {
+    interface GallopFrame {
+      bodyX: number;
+      bodyY: number;
+      bodyWidth: number;
+      headY: number;
+      tailY: number;
+      earPose: 'upright' | 'back' | 'flat' | 'rebound';
+      legs: Array<{ x: number; y: number; width: number; toeX: number; far: boolean }>;
+    }
+
+    // Contact → push → full flight → tuck → front landing → recovery.
+    // Separating near/far legs by one shade keeps all four readable in profile.
+    const frames: GallopFrame[] = [
+      {
+        bodyX: 3, bodyY: 8, bodyWidth: 16, headY: 6, tailY: 9, earPose: 'upright',
+        legs: [
+          { x: 3, y: 14, width: 3, toeX: 1, far: false },
+          { x: 8, y: 14, width: 3, toeX: 7, far: true },
+          { x: 16, y: 14, width: 2, toeX: 15, far: true },
+          { x: 20, y: 14, width: 2, toeX: 21, far: false },
+        ],
+      },
+      {
+        bodyX: 4, bodyY: 7, bodyWidth: 15, headY: 5, tailY: 8, earPose: 'back',
+        legs: [
+          { x: 1, y: 13, width: 4, toeX: 0, far: false },
+          { x: 6, y: 14, width: 3, toeX: 4, far: true },
+          { x: 17, y: 13, width: 3, toeX: 18, far: true },
+          { x: 20, y: 13, width: 3, toeX: 22, far: false },
+        ],
+      },
+      {
+        bodyX: 4, bodyY: 6, bodyWidth: 16, headY: 4, tailY: 7, earPose: 'flat',
+        legs: [
+          { x: 1, y: 12, width: 5, toeX: 0, far: false },
+          { x: 5, y: 13, width: 4, toeX: 3, far: true },
+          { x: 18, y: 12, width: 3, toeX: 20, far: true },
+          { x: 21, y: 11, width: 3, toeX: 22, far: false },
+        ],
+      },
+      {
+        bodyX: 5, bodyY: 6, bodyWidth: 14, headY: 5, tailY: 7, earPose: 'back',
+        legs: [
+          { x: 6, y: 12, width: 3, toeX: 7, far: false },
+          { x: 9, y: 13, width: 3, toeX: 8, far: true },
+          { x: 15, y: 12, width: 3, toeX: 14, far: true },
+          { x: 18, y: 12, width: 3, toeX: 17, far: false },
+        ],
+      },
+      {
+        bodyX: 4, bodyY: 7, bodyWidth: 15, headY: 5, tailY: 8, earPose: 'rebound',
+        legs: [
+          { x: 5, y: 13, width: 3, toeX: 4, far: true },
+          { x: 8, y: 13, width: 3, toeX: 7, far: false },
+          { x: 18, y: 13, width: 3, toeX: 20, far: true },
+          { x: 21, y: 14, width: 2, toeX: 22, far: false },
+        ],
+      },
+      {
+        bodyX: 3, bodyY: 8, bodyWidth: 16, headY: 6, tailY: 8, earPose: 'upright',
+        legs: [
+          { x: 2, y: 14, width: 3, toeX: 0, far: true },
+          { x: 7, y: 14, width: 3, toeX: 5, far: false },
+          { x: 16, y: 14, width: 3, toeX: 17, far: false },
+          { x: 21, y: 14, width: 2, toeX: 22, far: true },
+        ],
+      },
+    ];
+    const frame = frames[index % frames.length] ?? frames[0];
+    if (!frame) return;
+
+    this.drawRunningEars(graphics, frame.earPose, frame.headY);
+
+    // Far-side legs render behind the torso.
+    frame.legs.filter((leg) => leg.far).forEach((leg) => this.drawGallopLeg(graphics, leg, 0x241232));
+
+    graphics.fillStyle(0x020207, 1);
+    graphics.fillRect(frame.bodyX - 1, frame.bodyY - 1, frame.bodyWidth + 2, 9);
+    graphics.fillRect(17, frame.headY, 7, 8);
+    graphics.fillRect(0, frame.tailY, 5, 4);
+    graphics.fillStyle(0x11091b, 1);
+    graphics.fillRect(frame.bodyX, frame.bodyY, frame.bodyWidth, 7);
+    graphics.fillRect(18, frame.headY + 1, 5, 6);
+    graphics.fillRect(1, frame.tailY + 1, 3, 2);
+    graphics.fillStyle(0x271137, 1);
+    graphics.fillRect(frame.bodyX + 3, frame.bodyY + 1, frame.bodyWidth - 5, 3);
+    graphics.fillRect(19, frame.headY + 2, 3, 2);
+    graphics.fillStyle(0x82c9c7, 1);
+    graphics.fillRect(22, frame.headY + 2, 1, 1);
+
+    // Near-side legs finish the silhouette and visibly cross the far pair.
+    frame.legs.filter((leg) => !leg.far).forEach((leg) => this.drawGallopLeg(graphics, leg, 0x100719));
+  }
+
+  private drawRunningEars(
+    graphics: Phaser.GameObjects.Graphics,
+    pose: 'upright' | 'back' | 'flat' | 'rebound',
+    headY: number,
+  ): void {
+    graphics.fillStyle(0x020207, 1);
+    if (pose === 'upright') {
+      graphics.fillRect(18, headY - 5, 2, 6);
+      graphics.fillRect(21, headY - 4, 2, 5);
+      graphics.fillStyle(0x29123a, 1).fillRect(19, headY - 4, 1, 4).fillRect(22, headY - 3, 1, 3);
+    } else if (pose === 'rebound') {
+      graphics.fillRect(17, headY - 4, 3, 5);
+      graphics.fillRect(20, headY - 6, 2, 7);
+      graphics.fillStyle(0x29123a, 1).fillRect(18, headY - 3, 1, 3).fillRect(21, headY - 5, 1, 5);
+    } else if (pose === 'back') {
+      graphics.fillRect(14, headY - 3, 7, 2);
+      graphics.fillRect(12, headY - 1, 8, 2);
+      graphics.fillStyle(0x29123a, 1).fillRect(15, headY - 2, 5, 1).fillRect(13, headY, 6, 1);
+    } else {
+      graphics.fillRect(11, headY - 2, 10, 2);
+      graphics.fillRect(13, headY, 8, 2);
+      graphics.fillStyle(0x29123a, 1).fillRect(12, headY - 1, 8, 1).fillRect(14, headY + 1, 6, 1);
+    }
+  }
+
+  private drawGallopLeg(
+    graphics: Phaser.GameObjects.Graphics,
+    leg: { x: number; y: number; width: number; toeX: number },
+    color: number,
+  ): void {
+    graphics.fillStyle(color, 1);
+    graphics.fillRect(leg.x, leg.y, leg.width, 2);
+    graphics.fillRect(leg.toeX, leg.y + 2, 4, 1);
   }
 
   private createWorldTextures(): void {
@@ -128,6 +267,12 @@ export class BootScene extends Phaser.Scene {
     solid('pixel-gold', 0xd4aa4c, 2, 2);
     solid('pixel-ember', 0x8f532e, 1, 2);
     solid('pixel-dust', 0x5b5247, 2, 2);
+    solid('pixel-star', 0xaeb7bb, 1, 1);
+
+    graphics.clear();
+    graphics.fillStyle(0xaeb7bb, 1).fillRect(1, 0, 1, 3).fillRect(0, 1, 3, 1);
+    graphics.fillStyle(0xe1ded2, 1).fillRect(1, 1, 1, 1);
+    graphics.generateTexture('pixel-star-cross', 3, 3);
 
     graphics.clear();
     graphics.fillStyle(0x15171a, 1).fillRect(0, 0, 16, 8);

@@ -122,18 +122,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   private updateAnimation(time: number, grounded: boolean): void {
     if (this.dizzy) {
+      this.anims.timeScale = 1;
       this.playState('dizzy');
       return;
     }
     if (!grounded) {
+      this.anims.timeScale = 1;
       this.playState(this.bodyRef.velocity.y < 5 ? 'jump' : 'fall');
       return;
     }
     if (time < this.landingUntil) {
+      this.anims.timeScale = 1;
       this.playState('land');
       return;
     }
     if (Math.abs(this.bodyRef.velocity.x) > 9) {
+      this.anims.timeScale = Phaser.Math.Clamp(Math.abs(this.bodyRef.velocity.x) / 72, 0.72, 1.38);
       this.playState('run');
       if (time - this.lastFootstepAt > 230) {
         this.lastFootstepAt = time;
@@ -141,6 +145,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
       return;
     }
+    this.anims.timeScale = 1;
     this.playState('idle');
   }
 
@@ -152,7 +157,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private createAnimations(): void {
     const animations: Array<{ key: PlayerAnimation; frames: string[]; frameRate: number; repeat: number }> = [
       { key: 'idle', frames: ['player-idle-0', 'player-idle-1'], frameRate: 2, repeat: -1 },
-      { key: 'run', frames: ['player-run-0', 'player-run-1', 'player-run-2', 'player-run-3'], frameRate: 10, repeat: -1 },
+      {
+        key: 'run',
+        frames: [
+          'player-run-0', 'player-run-1', 'player-run-2',
+          'player-run-3', 'player-run-4', 'player-run-5',
+        ],
+        frameRate: 13,
+        repeat: -1,
+      },
       { key: 'jump', frames: ['player-jump'], frameRate: 1, repeat: -1 },
       { key: 'fall', frames: ['player-fall'], frameRate: 1, repeat: -1 },
       { key: 'land', frames: ['player-land'], frameRate: 1, repeat: -1 },
