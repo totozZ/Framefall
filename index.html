@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#03040a" />
+    <meta name="description" content="FRAMEFALL — a tiny interactive pixel-world portfolio." />
+    <title>FRAMEFALL</title>
+  </head>
+  <body>
+    <main id="game-shell" aria-label="Interactive portfolio game">
+      <div id="game-container"></div>
+      <div id="crt-overlay" aria-hidden="true"></div>
+      <section id="card-overlay" aria-live="polite" aria-hidden="true"></section>
+      <div id="controls-hint" class="is-hidden" aria-hidden="true">
+        <span>MOVE</span> FOLLOW THE CURSOR <i></i> <span>JUMP</span> LEFT CLICK
+      </div>
+      <div id="touch-notice">Best experienced with a mouse.</div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

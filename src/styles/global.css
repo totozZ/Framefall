@@ -1,0 +1,175 @@
+:root {
+  color: #d9d7ca;
+  background: #020309;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-synthesis: none;
+  --crt-scanline: 0.1;
+  --crt-noise: 0.035;
+  --crt-vignette: 0.72;
+  --crt-shift: 0.35px;
+  --crt-distortion: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#game-shell,
+#game-container {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #020309;
+}
+
+body {
+  min-width: 320px;
+  min-height: 180px;
+}
+
+#game-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+#game-container {
+  display: grid;
+  place-items: center;
+  transform: translateX(calc(var(--crt-distortion) * 1px));
+  filter: saturate(0.96) contrast(1.035);
+}
+
+#game-container canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow: 0 0 80px rgb(10 18 29 / 35%);
+}
+
+#crt-overlay {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  pointer-events: none;
+  opacity: 1;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(4 9 13 / 0%) 0,
+      rgb(4 9 13 / 0%) 2px,
+      rgb(0 0 0 / var(--crt-scanline)) 3px,
+      rgb(0 0 0 / var(--crt-scanline)) 4px
+    ),
+    radial-gradient(ellipse at center, transparent 45%, rgb(0 0 0 / var(--crt-vignette)) 130%);
+  mix-blend-mode: normal;
+  animation: crt-flicker 4.1s steps(1, end) infinite;
+}
+
+#crt-overlay::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  opacity: var(--crt-noise);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
+  background-size: 190px 110px;
+  animation: noise-step 650ms steps(2, end) infinite;
+}
+
+#crt-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: calc(var(--crt-distortion) * 0.09);
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 13px,
+    rgb(56 230 255 / 20%) 14px 15px,
+    transparent 16px 31px,
+    rgb(255 51 118 / 16%) 32px 34px
+  );
+  transform: translateX(calc(var(--crt-distortion) * -2px));
+}
+
+body.crt-distorting #game-container {
+  animation: frame-jitter 90ms steps(2, end) infinite;
+  filter: saturate(1.15) contrast(1.09)
+    drop-shadow(calc(var(--crt-shift) * 2) 0 rgb(255 38 101 / 28%))
+    drop-shadow(calc(var(--crt-shift) * -2) 0 rgb(49 224 255 / 28%));
+}
+
+#controls-hint {
+  position: fixed;
+  z-index: 18;
+  left: 50%;
+  bottom: 22px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: rgb(197 211 205 / 48%);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  transform: translateX(-50%);
+  transition: opacity 800ms ease;
+  pointer-events: none;
+}
+
+#controls-hint span {
+  color: #d4ad59;
+}
+
+#controls-hint i {
+  width: 1px;
+  height: 10px;
+  background: rgb(218 192 119 / 32%);
+}
+
+#controls-hint.is-hidden {
+  opacity: 0;
+}
+
+#touch-notice {
+  display: none;
+  position: fixed;
+  z-index: 90;
+  left: 50%;
+  bottom: 14px;
+  padding: 8px 12px;
+  border: 1px solid #6d5e38;
+  color: #cbbd91;
+  background: rgb(6 7 10 / 88%);
+  font-size: 11px;
+  transform: translateX(-50%);
+}
+
+.touch-device #touch-notice {
+  display: block;
+}
+
+@keyframes crt-flicker {
+  0%, 94%, 100% { opacity: 1; }
+  95% { opacity: 0.975; }
+  97% { opacity: 0.99; }
+}
+
+@keyframes noise-step {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-3%, 2%); }
+  66% { transform: translate(2%, -3%); }
+}
+
+@keyframes frame-jitter {
+  0% { transform: translate(0, 0) skewX(0deg); }
+  40% { transform: translate(calc(var(--crt-distortion) * 1px), -1px) skewX(-0.12deg); }
+  70% { transform: translate(calc(var(--crt-distortion) * -0.7px), 1px) skewX(0.1deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #crt-overlay,
+  #crt-overlay::before,
+  body.crt-distorting #game-container {
+    animation: none;
+  }
+}
