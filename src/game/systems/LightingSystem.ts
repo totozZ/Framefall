@@ -24,7 +24,7 @@ export class LightingSystem {
   }
 
   public addCandle(x: number, y: number): void {
-    const glow = this.scene.add.image(x, y - 8, 'organic-light')
+    const glow = this.scene.add.image(x, y - 8, 'warm-light')
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(3)
       .setAlpha(0)

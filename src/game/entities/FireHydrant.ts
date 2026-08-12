@@ -21,7 +21,7 @@ export class FireHydrant extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
     this.setOrigin(0.5, 1).setDepth(7).setImmovable(true);
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setAllowGravity(false).setSize(16, 23).setOffset(2, 1);
+    body.setAllowGravity(false).setSize(18, 26).setOffset(3, 2);
   }
 
   public canBeStomped(player: Phaser.Physics.Arcade.Sprite, time: number): boolean {

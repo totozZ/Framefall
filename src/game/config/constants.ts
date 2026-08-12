@@ -11,8 +11,10 @@ export const PLAYER_CONFIG = {
   jumpVelocity: -238,
   coyoteTimeMs: 105,
   jumpBufferMs: 115,
-  bodyWidth: 8,
-  bodyHeight: 16,
+  bodyWidth: 19,
+  bodyHeight: 10,
+  bodyOffsetX: 3,
+  bodyOffsetY: 7,
 } as const;
 
 export const CARD_CONFIG = {
@@ -31,10 +33,17 @@ export const CRT_CONFIG = {
 
 export const LIGHT_CONFIG = {
   playerRadius: 54,
-  playerAlpha: 0.42,
-  candleRadius: 38,
-  candleAlpha: 0.34,
+  playerAlpha: 0.36,
+  candleRadius: 43,
+  candleAlpha: 0.48,
   flickerAmount: 0.07,
+} as const;
+
+export const HAZARD_CONFIG = {
+  vanishDelayMs: 150,
+  recoveryMs: 720,
+  safeGroundSampleMs: 180,
+  fallThresholdY: 198,
 } as const;
 
 export const WATER_CONFIG = {
@@ -84,5 +93,6 @@ export enum GameState {
   HYDRANT_EVENT = 'HYDRANT_EVENT',
   WELL_FALL = 'WELL_FALL',
   CAVE_LANDING = 'CAVE_LANDING',
+  HAZARD_RECOVERY = 'HAZARD_RECOVERY',
   END_CARD = 'END_CARD',
 }

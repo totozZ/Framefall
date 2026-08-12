@@ -10,6 +10,11 @@ import { CRTSystem } from '../systems/CRTSystem';
 import { ParticleSystem } from '../systems/ParticleSystem';
 import { WaterSystem } from '../systems/WaterSystem';
 
+interface SurfaceSceneData {
+  skipIntro?: boolean;
+  previewX?: number;
+}
+
 export class SurfaceScene extends Phaser.Scene {
   private state = GameState.INTRO;
   private player!: Player;
@@ -21,9 +26,17 @@ export class SurfaceScene extends Phaser.Scene {
   private crt!: CRTSystem;
   private cameraEffects!: CameraEffects;
   private hintTimer?: Phaser.Time.TimerEvent;
+  private cloudSprites: Phaser.GameObjects.Sprite[] = [];
+  private skipIntro = false;
+  private startX = 64;
 
   public constructor() {
     super('SurfaceScene');
+  }
+
+  public init(data: SurfaceSceneData): void {
+    this.skipIntro = data.skipIntro ?? false;
+    this.startX = data.previewX ?? 64;
   }
 
   public create(): void {
@@ -38,9 +51,10 @@ export class SurfaceScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, SURFACE.width, 260);
     this.cameras.main.setBounds(0, 0, SURFACE.width, 180).setRoundPixels(true);
     this.drawSurfaceWorld();
+    this.createCloudLayer();
     const platforms = this.createPlatforms();
 
-    this.player = new Player(this, 64, SURFACE.floorY - 4);
+    this.player = new Player(this, this.startX, SURFACE.floorY - 4);
     this.player.setCollideWorldBounds(true);
     this.player.setControlEnabled(false);
     this.physics.add.collider(this.player, platforms);
@@ -66,7 +80,13 @@ export class SurfaceScene extends Phaser.Scene {
     );
     this.physics.add.collider(this.player, this.hydrant, () => this.handleHydrantCollision());
 
-    this.createIntroReveal();
+    if (this.skipIntro) {
+      this.state = GameState.PLAYING;
+      this.player.setControlEnabled(true);
+      AudioSystem.instance.ambience('surface');
+    } else {
+      this.createIntroReveal();
+    }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.cardSystem.destroy();
       this.particles.destroy();
@@ -80,6 +100,7 @@ export class SurfaceScene extends Phaser.Scene {
     this.cassette.update(time);
     this.particles.update(delta);
     this.water.update(time, delta, this.player);
+    this.updateClouds(time);
 
     const velocityX = (this.player.body as Phaser.Physics.Arcade.Body).velocity.x;
     this.cameras.main.setFollowOffset(-Math.sign(velocityX) * CAMERA_CONFIG.lookAhead, 0);
@@ -97,32 +118,42 @@ export class SurfaceScene extends Phaser.Scene {
     };
     add(SURFACE.wellLeft / 2, 158, SURFACE.wellLeft);
     add((SURFACE.wellRight + SURFACE.width) / 2, 158, SURFACE.width - SURFACE.wellRight);
-    add(442, 139, 54, 7);
-    add(905, 142, 62, 7);
+    add(438, 140, 38, 7);
+    add(899, 143, 44, 7);
     return platforms;
   }
 
   private drawSurfaceWorld(): void {
     const sky = this.add.graphics().setDepth(-20).setScrollFactor(0.12);
-    sky.fillGradientStyle(0x090b16, 0x090b16, 0x12131d, 0x12131d, 1);
+    sky.fillGradientStyle(0x080a11, 0x080a11, 0x171923, 0x171923, 1);
     sky.fillRect(-80, 0, SURFACE.width + 180, 180);
     for (let index = 0; index < 72; index += 1) {
       const x = (index * 83 + 29) % (SURFACE.width + 120);
       const y = 15 + ((index * 47) % 105);
       const alpha = 0.05 + (index % 4) * 0.018;
-      sky.fillStyle(index % 7 === 0 ? 0x88735a : 0x51576c, alpha).fillRect(x, y, index % 5 === 0 ? 2 : 1, 1);
+      sky.fillStyle(index % 7 === 0 ? 0x766c61 : 0x515763, alpha).fillRect(x, y, index % 5 === 0 ? 2 : 1, 1);
     }
 
+    sky.fillStyle(0x272831, 0.7).fillCircle(245, 38, 13);
+    sky.fillStyle(0x11131b, 0.68).fillCircle(249, 35, 12);
+
     const distant = this.add.graphics().setDepth(-15).setScrollFactor(0.45);
-    distant.fillStyle(0x0b0c13, 1);
+    distant.fillStyle(0x0a0c12, 1);
     for (let x = -30; x < SURFACE.width + 100; x += 58) {
       const height = 22 + ((x * 13) % 25 + 25) % 25;
       distant.fillTriangle(x, SURFACE.floorY, x + 38, SURFACE.floorY - height, x + 84, SURFACE.floorY);
     }
     distant.fillStyle(0x10121a, 1).fillRect(-30, 132, SURFACE.width + 100, 28);
+    distant.fillStyle(0x151720, 1);
+    for (let x = 34; x < SURFACE.width; x += 117) {
+      const trunkHeight = 15 + (x % 11);
+      distant.fillRect(x, 129 - trunkHeight, 3, trunkHeight);
+      distant.fillTriangle(x - 11, 123 - trunkHeight, x + 2, 98 - trunkHeight, x + 14, 123 - trunkHeight);
+      distant.fillTriangle(x - 8, 113 - trunkHeight, x + 3, 91 - trunkHeight, x + 12, 113 - trunkHeight);
+    }
 
     const world = this.add.graphics().setDepth(0);
-    world.fillStyle(0x19171d, 1).fillRect(0, SURFACE.floorY, SURFACE.wellLeft, 27);
+    world.fillStyle(0x18171b, 1).fillRect(0, SURFACE.floorY, SURFACE.wellLeft, 27);
     world.fillRect(SURFACE.wellRight, SURFACE.floorY, SURFACE.width - SURFACE.wellRight, 27);
     world.fillStyle(0x30262b, 1).fillRect(0, SURFACE.floorY, SURFACE.wellLeft, 2);
     world.fillRect(SURFACE.wellRight, SURFACE.floorY, SURFACE.width - SURFACE.wellRight, 2);
@@ -131,10 +162,67 @@ export class SurfaceScene extends Phaser.Scene {
       world.fillStyle(x % 57 === 0 ? 0x47323a : 0x292128, 0.8).fillRect(x, 158 + (x % 3), 7, 2);
     }
 
+    world.fillStyle(0x3e4040, 1);
+    for (let x = 24; x < SURFACE.width; x += 43) {
+      if (x > SURFACE.wellLeft - 16 && x < SURFACE.wellRight + 16) continue;
+      const rockWidth = 3 + (x % 4);
+      world.fillRect(x, SURFACE.floorY - 2 - (x % 2), rockWidth, 2 + (x % 2));
+      world.fillStyle(0x65635b, 0.65).fillRect(x + 1, SURFACE.floorY - 2 - (x % 2), Math.max(1, rockWidth - 2), 1);
+      world.fillStyle(0x3e4040, 1);
+    }
+    for (let index = 0; index < 78; index += 1) {
+      const x = 8 + index * 17;
+      if (x > SURFACE.wellLeft - 20 && x < SURFACE.wellRight + 20) continue;
+      const height = 2 + (index % 5);
+      world.fillStyle(index % 9 === 0 ? 0x4e5042 : 0x28352e, 0.8).fillRect(x, SURFACE.floorY - height, 1, height);
+      if (index % 11 === 0) world.fillRect(x - 2, SURFACE.floorY - height + 1, 2, 1);
+    }
+
     this.drawGarden(world);
     this.drawWell(world);
-    world.fillStyle(0x25222b, 1).fillRect(415, 136, 54, 4);
-    world.fillStyle(0x30272e, 1).fillRect(874, 139, 62, 4);
+    this.drawStoneLedge(world, 419, 136, 38);
+    this.drawStoneLedge(world, 877, 139, 44);
+  }
+
+  private createCloudLayer(): void {
+    const placements = [
+      { x: 132, y: 34, scale: 0.9, factor: 0.18 },
+      { x: 418, y: 53, scale: 0.65, factor: 0.22 },
+      { x: 710, y: 27, scale: 1.1, factor: 0.16 },
+      { x: 1010, y: 48, scale: 0.78, factor: 0.2 },
+      { x: 1280, y: 30, scale: 0.95, factor: 0.17 },
+    ];
+    this.cloudSprites = placements.map((placement, index) => {
+      const cloud = this.add.sprite(placement.x, placement.y, `cloud-${index % 2}`)
+        .setScale(placement.scale)
+        .setAlpha(0.42)
+        .setScrollFactor(placement.factor)
+        .setDepth(-18);
+      this.tweens.add({
+        targets: cloud,
+        x: cloud.x + 22 + index * 3,
+        duration: 18000 + index * 2700,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
+      return cloud;
+    });
+  }
+
+  private updateClouds(time: number): void {
+    this.cloudSprites.forEach((cloud, index) => {
+      cloud.setAlpha(0.39 + Math.sin(time * 0.00035 + index) * 0.045);
+      if (Math.floor(time / 850) % 2 === index % 2) cloud.setTexture(`cloud-${(index + Math.floor(time / 850)) % 2}`);
+    });
+  }
+
+  private drawStoneLedge(graphics: Phaser.GameObjects.Graphics, x: number, y: number, width: number): void {
+    graphics.fillStyle(0x101216, 1).fillRect(x, y + 2, width, 7);
+    graphics.fillStyle(0x4e5558, 1).fillRect(x, y, width, 2);
+    graphics.fillStyle(0x31373a, 1).fillRect(x + 2, y + 2, width - 4, 3);
+    graphics.fillStyle(0x777b73, 0.8).fillRect(x + 3, y, 8, 1).fillRect(x + width - 12, y + 1, 7, 1);
+    graphics.fillStyle(0x0a0c0e, 1).fillRect(x + Math.floor(width * 0.55), y + 2, 1, 4);
   }
 
   private drawGarden(graphics: Phaser.GameObjects.Graphics): void {
@@ -162,33 +250,51 @@ export class SurfaceScene extends Phaser.Scene {
   }
 
   private createIntroReveal(): void {
-    const curtain = this.add.rectangle(0, 0, 320, 180, 0x000000, 1)
-      .setOrigin(0)
-      .setScrollFactor(0)
-      .setDepth(1000);
-    const aperture = this.make.graphics({ x: -26, y: this.player.y - 10 }, false);
-    aperture.fillStyle(0xffffff).fillCircle(0, 0, 18);
-    const mask = aperture.createGeometryMask();
-    mask.setInvertAlpha(true);
-    curtain.setMask(mask);
+    // The iris lives in the DOM so it covers letterboxing and every canvas
+    // element consistently. This also avoids browser-specific WebGL mask stalls.
+    const veil = document.createElement('div');
+    veil.setAttribute('aria-hidden', 'true');
+    Object.assign(veil.style, {
+      position: 'fixed',
+      inset: '0',
+      zIndex: '50',
+      pointerEvents: 'none',
+      background: '#000',
+    });
+    document.body.append(veil);
+
+    const canvas = this.game.canvas;
+    const bounds = canvas.getBoundingClientRect();
+    const targetX = bounds.left + (this.player.x / 320) * bounds.width;
+    const targetY = bounds.top + ((this.player.y - 10) / 180) * bounds.height;
+    const aperture = { x: -40, y: targetY, radius: 0 };
+    const redrawVeil = (): void => {
+      const mask = `radial-gradient(circle ${aperture.radius}px at ${aperture.x}px ${aperture.y}px, transparent 0 ${aperture.radius}px, #000 ${aperture.radius + 1}px)`;
+      veil.style.maskImage = mask;
+      veil.style.webkitMaskImage = mask;
+    };
+    redrawVeil();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => veil.remove());
 
     this.time.delayedCall(420, () => {
       this.tweens.add({
         targets: aperture,
-        x: this.player.x,
+        x: targetX,
+        radius: 18 * (bounds.width / 320),
         duration: 820,
         ease: 'Back.Out',
+        onUpdate: redrawVeil,
         onComplete: () => {
           this.time.delayedCall(1000, () => {
             AudioSystem.instance.play('introReveal');
             this.tweens.add({
               targets: aperture,
-              scale: 18,
+              radius: Math.hypot(window.innerWidth, window.innerHeight),
               duration: 720,
               ease: 'Cubic.In',
+              onUpdate: redrawVeil,
               onComplete: () => {
-                curtain.destroy();
-                aperture.destroy();
+                veil.remove();
                 this.state = GameState.PLAYING;
                 this.player.setControlEnabled(true);
                 AudioSystem.instance.ambience('surface');
@@ -271,6 +377,25 @@ export class SurfaceScene extends Phaser.Scene {
     this.player.setControlEnabled(false);
     AudioSystem.instance.play('wellEnter');
     AudioSystem.instance.stopAmbience();
-    this.scene.start('WellTransitionScene');
+    const entryX = this.player.x - this.cameras.main.worldView.x;
+    const veil = this.add.rectangle(0, 0, 320, 180, 0x000104, 0)
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setDepth(900);
+    this.cameras.main.stopFollow();
+    this.tweens.add({
+      targets: [veil],
+      alpha: 0.88,
+      duration: 330,
+      ease: 'Sine.In',
+    });
+    this.tweens.add({
+      targets: this.player,
+      y: this.player.y + 32,
+      scale: 0.76,
+      duration: 330,
+      ease: 'Quad.In',
+      onComplete: () => this.scene.start('WellTransitionScene', { entryX }),
+    });
   }
 }

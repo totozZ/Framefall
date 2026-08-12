@@ -19,7 +19,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setDepth(10).setOrigin(0.5, 1).setCollideWorldBounds(false);
-    this.bodyRef.setSize(PLAYER_CONFIG.bodyWidth, PLAYER_CONFIG.bodyHeight).setOffset(3, 5);
+    this.bodyRef
+      .setSize(PLAYER_CONFIG.bodyWidth, PLAYER_CONFIG.bodyHeight)
+      .setOffset(PLAYER_CONFIG.bodyOffsetX, PLAYER_CONFIG.bodyOffsetY);
     this.bodyRef.setMaxVelocity(PLAYER_CONFIG.maxSpeed, 480);
     this.bodyRef.setDragX(PLAYER_CONFIG.deceleration);
     this.createAnimations();
@@ -41,6 +43,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public setDizzy(value: boolean): void {
     this.dizzy = value;
     if (value) this.playState('dizzy');
+  }
+
+  public isGrounded(): boolean {
+    return this.bodyRef.blocked.down || this.bodyRef.touching.down;
   }
 
   public bounceFrom(x: number): void {
@@ -109,6 +115,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (!buffered || !canJump) return;
     this.jumpBufferedAt = -Infinity;
     this.lastGroundedAt = -Infinity;
+    this.emit('jump-start', this.x, this.y);
     this.setVelocityY(PLAYER_CONFIG.jumpVelocity);
     AudioSystem.instance.play('jump');
   }
