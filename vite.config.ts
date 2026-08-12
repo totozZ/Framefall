@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  // Relative assets work both at a custom domain and /repository-name/ on Pages.
-  base: './',
+  // GitHub Pages project site: https://totozZ.github.io/Framefall/
+  base: '/Framefall/',
   build: {
     target: 'es2022',
     sourcemap: true,

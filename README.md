@@ -4,6 +4,10 @@ FRAMEFALL is a short, atmospheric 2D pixel-game portfolio. Follow the cursor to 
 
 The project is a complete front-end vertical slice: no server, database, external sprites, fonts, or audio files are required. Placeholder art is generated at runtime and placeholder sound uses Web Audio, so the first run is immediately playable.
 
+## Live Demo
+
+https://totozZ.github.io/Framefall/
+
 ## Stack
 
 - Vite
@@ -44,7 +48,7 @@ The included workflow deploys every push to `main` through GitHub Pages Actions.
 3. Set **Source** to **GitHub Actions**.
 4. Push to `main`, or run the workflow manually.
 
-`vite.config.ts` uses `base: './'`, which makes built asset URLs relative and allows the same output to work under `/repository-name/` or a custom domain. If you prefer an absolute base, replace it with `'/your-repository-name/'`.
+`vite.config.ts` uses `base: '/Framefall/'`, matching this repository's GitHub Pages project path.
 
 ## Controls
 

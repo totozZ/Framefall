@@ -2,6 +2,8 @@ node_modules/
 dist/
 .vite/
 .npm-cache/
+.env
+.env.*
 *.log
 *.tsbuildinfo
 .DS_Store
