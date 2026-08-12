@@ -2,17 +2,19 @@ import Phaser from 'phaser';
 import { Collectible } from '../entities/Collectible';
 import { FireHydrant } from '../entities/FireHydrant';
 import { Player } from '../entities/Player';
-import { CAMERA_CONFIG, GameState, HYDRANT_CONFIG, SURFACE } from '../config/constants';
+import { CAMERA_CONFIG, GameState, HYDRANT_CONFIG, LIGHT_CONFIG, SURFACE } from '../config/constants';
 import { AudioSystem } from '../systems/AudioSystem';
 import { CameraEffects } from '../systems/CameraEffects';
 import { CardSystem } from '../systems/CardSystem';
 import { CRTSystem } from '../systems/CRTSystem';
+import { LightingSystem } from '../systems/LightingSystem';
 import { ParticleSystem } from '../systems/ParticleSystem';
 import { WaterSystem } from '../systems/WaterSystem';
 
 interface SurfaceSceneData {
   skipIntro?: boolean;
   previewX?: number;
+  previewWater?: boolean;
 }
 
 interface BackgroundStar {
@@ -32,11 +34,13 @@ export class SurfaceScene extends Phaser.Scene {
   private cardSystem!: CardSystem;
   private crt!: CRTSystem;
   private cameraEffects!: CameraEffects;
+  private lighting!: LightingSystem;
   private hintTimer?: Phaser.Time.TimerEvent;
   private cloudSprites: Phaser.GameObjects.Sprite[] = [];
   private backgroundStars: BackgroundStar[] = [];
   private skipIntro = false;
   private startX = 64;
+  private previewWater = false;
 
   public constructor() {
     super('SurfaceScene');
@@ -45,6 +49,7 @@ export class SurfaceScene extends Phaser.Scene {
   public init(data: SurfaceSceneData): void {
     this.skipIntro = data.skipIntro ?? false;
     this.startX = data.previewX ?? 64;
+    this.previewWater = data.previewWater ?? false;
   }
 
   public create(): void {
@@ -55,6 +60,7 @@ export class SurfaceScene extends Phaser.Scene {
     this.cameraEffects = new CameraEffects(this.cameras.main);
     this.particles = new ParticleSystem(this, 150);
     this.water = new WaterSystem(this, this.particles, SURFACE.hydrantX, SURFACE.floorY);
+    this.lighting = new LightingSystem(this);
 
     this.physics.world.setBounds(0, 0, SURFACE.width, 260);
     this.cameras.main.setBounds(0, 0, SURFACE.width, 180).setRoundPixels(true);
@@ -66,6 +72,12 @@ export class SurfaceScene extends Phaser.Scene {
     this.player = new Player(this, this.startX, SURFACE.floorY - 4);
     this.player.setCollideWorldBounds(true);
     this.player.setControlEnabled(false);
+    this.lighting.attachToPlayer(this.player, {
+      radius: LIGHT_CONFIG.surfacePlayerRadius,
+      alpha: LIGHT_CONFIG.surfacePlayerAlpha,
+    });
+    this.player.on('jump-start', () => this.water.splashAt(this.player, 'jump'));
+    this.player.on('land', () => this.water.splashAt(this.player, 'land'));
     this.physics.add.collider(this.player, platforms);
     this.cameras.main.startFollow(this.player, true, CAMERA_CONFIG.followLerpX, CAMERA_CONFIG.followLerpY);
     this.cameras.main.setDeadzone(CAMERA_CONFIG.deadzoneWidth, CAMERA_CONFIG.deadzoneHeight);
@@ -96,6 +108,7 @@ export class SurfaceScene extends Phaser.Scene {
     } else {
       this.createIntroReveal();
     }
+    if (import.meta.env.DEV && this.previewWater) this.water.start();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.cardSystem.destroy();
       this.particles.destroy();
@@ -109,6 +122,7 @@ export class SurfaceScene extends Phaser.Scene {
     this.cassette.update(time);
     this.particles.update(delta);
     this.water.update(time, delta, this.player);
+    this.lighting.update(time, this.player);
     this.updateClouds(time);
     this.updateStars(time);
 

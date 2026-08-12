@@ -34,6 +34,8 @@ export const CRT_CONFIG = {
 export const LIGHT_CONFIG = {
   playerRadius: 54,
   playerAlpha: 0.36,
+  surfacePlayerRadius: 36,
+  surfacePlayerAlpha: 0.11,
   candleRadius: 43,
   candleAlpha: 0.48,
   flickerAmount: 0.07,
@@ -52,6 +54,8 @@ export const WATER_CONFIG = {
   spreadPixelsPerSecond: 52,
   maxDepth: 6,
   splashCooldownMs: 150,
+  jumpSplashCount: 10,
+  landSplashCount: 16,
 } as const;
 
 export const HYDRANT_CONFIG = {

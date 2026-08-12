@@ -70,6 +70,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (grounded && !this.wasGrounded && this.bodyRef.velocity.y >= 0) {
       this.landingUntil = time + 110;
       AudioSystem.instance.play('land');
+      this.emit('land', this.x, this.y);
     }
     this.updateAnimation(time, grounded);
     this.wasGrounded = grounded;

@@ -22,6 +22,7 @@ export class BootScene extends Phaser.Scene {
       this.scene.start('SurfaceScene', {
         skipIntro: true,
         previewX: Number(previewParams.get('x')) || undefined,
+        previewWater: previewParams.get('water') === '1',
       });
     } else {
       this.scene.start('SurfaceScene');
@@ -273,6 +274,12 @@ export class BootScene extends Phaser.Scene {
     graphics.fillStyle(0xaeb7bb, 1).fillRect(1, 0, 1, 3).fillRect(0, 1, 3, 1);
     graphics.fillStyle(0xe1ded2, 1).fillRect(1, 1, 1, 1);
     graphics.generateTexture('pixel-star-cross', 3, 3);
+
+    graphics.clear();
+    graphics.fillStyle(0x315d70, 0.75).fillRect(1, 2, 14, 1);
+    graphics.fillStyle(0x78abb6, 0.9).fillRect(4, 1, 8, 1);
+    graphics.fillStyle(0x142f3e, 0.65).fillRect(4, 3, 8, 1);
+    graphics.generateTexture('water-ripple', 16, 4);
 
     graphics.clear();
     graphics.fillStyle(0x15171a, 1).fillRect(0, 0, 16, 8);

@@ -8,19 +8,26 @@ interface LightSource {
   baseAlpha: number;
 }
 
+interface PlayerLightOptions {
+  radius?: number;
+  alpha?: number;
+}
+
 export class LightingSystem {
   private readonly lights: LightSource[] = [];
   private playerLight: LightSource | null = null;
 
   public constructor(private readonly scene: Phaser.Scene) {}
 
-  public attachToPlayer(player: Phaser.GameObjects.Sprite): void {
+  public attachToPlayer(player: Phaser.GameObjects.Sprite, options: PlayerLightOptions = {}): void {
+    const radius = options.radius ?? LIGHT_CONFIG.playerRadius;
+    const alpha = options.alpha ?? LIGHT_CONFIG.playerAlpha;
     const glow = this.scene.add.image(player.x, player.y, 'organic-light')
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(3)
-      .setAlpha(LIGHT_CONFIG.playerAlpha)
-      .setScale(LIGHT_CONFIG.playerRadius / 48);
-    this.playerLight = { glow, phase: Math.random() * 10, baseScale: LIGHT_CONFIG.playerRadius / 48, baseAlpha: LIGHT_CONFIG.playerAlpha };
+      .setAlpha(alpha)
+      .setScale(radius / 48);
+    this.playerLight = { glow, phase: Math.random() * 10, baseScale: radius / 48, baseAlpha: alpha };
   }
 
   public addCandle(x: number, y: number): void {
