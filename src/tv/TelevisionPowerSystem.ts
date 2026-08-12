@@ -121,7 +121,16 @@ export class TelevisionPowerSystem {
     await this.wait(90);
     audio.play('tvPowerOn');
     await this.wait(430);
+    await this.wait(230);
+    this.staticLayer.classList.remove('is-visible', 'is-surging');
+    audio.stopTelevisionStatic();
+    await this.wait(230);
 
+    // Let the CRT picture return to its full, untransformed layout before
+    // Phaser measures its parent. Creating it during the thin-line phase would
+    // make Scale Manager size the canvas to only a few pixels.
+    this.screen.dataset.powerState = 'ON';
+    await this.wait(32);
     if (!this.game) {
       this.game = this.options.createGame();
     } else {
@@ -131,10 +140,6 @@ export class TelevisionPowerSystem {
       audio.resumeForTelevision();
     }
 
-    await this.wait(230);
-    this.staticLayer.classList.remove('is-visible', 'is-surging');
-    audio.stopTelevisionStatic();
-    await this.wait(230);
     this.hasPoweredOn = true;
     this.screen.inert = false;
     this.setState('ON');

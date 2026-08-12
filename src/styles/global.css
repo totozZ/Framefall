@@ -625,18 +625,27 @@ body.crt-distorting #game-container {
   display: none;
   position: absolute;
   z-index: 90;
+  top: calc(100% + clamp(4px, 1vh, 10px));
   left: 50%;
-  bottom: 3%;
-  padding: 8px 12px;
+  width: max-content;
+  max-width: 92vw;
+  padding: 6px 10px;
   border: 1px solid #6d5e38;
   color: #cbbd91;
   background: rgb(6 7 10 / 88%);
-  font-size: 11px;
+  font-size: clamp(8px, 2.6vw, 11px);
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
   transform: translateX(-50%);
 }
 
 .touch-device #touch-notice {
   display: block;
+}
+
+.touch-device #tv-set {
+  width: min(99.2vw, calc(82vh * 1.7), 1700px);
 }
 
 @keyframes crt-flicker {

@@ -321,11 +321,7 @@ export class SurfaceScene extends Phaser.Scene {
     program.append(veil);
 
     const canvas = this.game.canvas;
-    const bounds = canvas.getBoundingClientRect();
-    const programBounds = program.getBoundingClientRect();
-    const targetX = bounds.left - programBounds.left + (this.player.x / 320) * bounds.width;
-    const targetY = bounds.top - programBounds.top + ((this.player.y - 10) / 180) * bounds.height;
-    const aperture = { x: -40, y: targetY, radius: 0 };
+    const aperture = { x: -40, y: 0, radius: 0 };
     const redrawVeil = (): void => {
       const mask = `radial-gradient(circle ${aperture.radius}px at ${aperture.x}px ${aperture.y}px, transparent 0 ${aperture.radius}px, #000 ${aperture.radius + 1}px)`;
       veil.style.maskImage = mask;
@@ -335,10 +331,29 @@ export class SurfaceScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => veil.remove());
 
     this.time.delayedCall(420, () => {
+      // offset/client dimensions are layout-space values, so unlike
+      // getBoundingClientRect they are not squashed by the CRT boot transform.
+      let canvasLeft = 0;
+      let canvasTop = 0;
+      let offsetNode: HTMLElement | null = canvas;
+      while (offsetNode && offsetNode !== program) {
+        canvasLeft += offsetNode.offsetLeft;
+        canvasTop += offsetNode.offsetTop;
+        offsetNode = offsetNode.offsetParent as HTMLElement | null;
+      }
+      const displayWidth = canvas.clientWidth;
+      const displayHeight = canvas.clientHeight;
+      const camera = this.cameras.main;
+      const playerScreenX = this.player.x - camera.worldView.x;
+      const playerScreenY = this.player.y - 10 - camera.worldView.y;
+      const targetX = canvasLeft + (playerScreenX / canvas.width) * displayWidth;
+      const targetY = canvasTop + (playerScreenY / canvas.height) * displayHeight;
+      aperture.y = targetY;
+
       this.tweens.add({
         targets: aperture,
         x: targetX,
-        radius: 18 * (bounds.width / 320),
+        radius: 18 * (displayWidth / canvas.width),
         duration: 820,
         ease: 'Back.Out',
         onUpdate: redrawVeil,
@@ -347,7 +362,7 @@ export class SurfaceScene extends Phaser.Scene {
             AudioSystem.instance.play('introReveal');
             this.tweens.add({
               targets: aperture,
-              radius: Math.hypot(programBounds.width, programBounds.height),
+              radius: Math.hypot(program.clientWidth, program.clientHeight),
               duration: 720,
               ease: 'Cubic.In',
               onUpdate: redrawVeil,
