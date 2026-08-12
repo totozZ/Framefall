@@ -70,9 +70,9 @@ body {
     repeating-linear-gradient(
       to bottom,
       rgb(4 9 13 / 0%) 0,
-      rgb(4 9 13 / 0%) 2px,
-      rgb(0 0 0 / var(--crt-scanline)) 3px,
-      rgb(0 0 0 / var(--crt-scanline)) 4px
+      rgb(4 9 13 / 0%) 6px,
+      rgb(0 0 0 / var(--crt-scanline)) 7px,
+      rgb(0 0 0 / var(--crt-scanline)) 8px
     ),
     radial-gradient(ellipse at center, transparent 45%, rgb(0 0 0 / var(--crt-vignette)) 130%);
   mix-blend-mode: normal;

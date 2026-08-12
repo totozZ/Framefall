@@ -10,6 +10,8 @@ import { CRTSystem } from '../systems/CRTSystem';
 import { LightingSystem } from '../systems/LightingSystem';
 import { ParticleSystem } from '../systems/ParticleSystem';
 
+const CAVE_LANDING_DIZZY_MS = 1900;
+
 interface CaveSceneData {
   fromWell?: boolean;
   previewX?: number;
@@ -303,7 +305,7 @@ export class CaveScene extends Phaser.Scene {
 
   private handleLanding(): void {
     this.landed = true;
-    this.showDizzy(900);
+    this.showDizzy();
     this.cameraEffects.impactShake();
     AudioSystem.instance.play('caveImpact');
     this.particles.burst({
@@ -319,7 +321,7 @@ export class CaveScene extends Phaser.Scene {
       bounce: 0.18,
       scale: [0.7, 1.5],
     });
-    this.time.delayedCall(900, () => {
+    this.time.delayedCall(CAVE_LANDING_DIZZY_MS, () => {
       this.hideDizzy();
       this.player.setControlEnabled(true);
       this.state = GameState.PLAYING;
@@ -385,7 +387,7 @@ export class CaveScene extends Phaser.Scene {
     return (x >= 330 && x < 370) || (x >= 624 && x < 680) || (x >= 900 && x < 950);
   }
 
-  private showDizzy(_duration: number): void {
+  private showDizzy(): void {
     this.player.setDizzy(true);
     this.dizzyStars.setVisible(true);
     AudioSystem.instance.play('dizzy');
