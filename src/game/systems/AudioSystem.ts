@@ -5,7 +5,8 @@ export type SoundEvent =
   | 'waterBurst' | 'waterLoop' | 'waterSplash'
   | 'wellEnter' | 'fallWind' | 'crtDistortion' | 'caveImpact' | 'dizzy'
   | 'candleIgnite' | 'finalCardPickup'
-  | 'tvSwitch' | 'tvPowerOn' | 'tvPowerOff';
+  | 'tvSwitch' | 'tvPowerOn' | 'tvPowerOff'
+  | 'clockAlign' | 'timeWarp' | 'meteorSplit' | 'meteorImpact';
 
 type AmbienceKind = 'surface' | 'cave';
 
@@ -31,6 +32,10 @@ export class AudioSystem {
   private televisionNoiseNodes: AudioNode[] = [];
   private televisionNoiseGain: GainNode | null = null;
   private televisionNoiseSource: AudioBufferSourceNode | null = null;
+  private meteorRumbleNodes: AudioNode[] = [];
+  private meteorRumbleGain: GainNode | null = null;
+  private meteorRumbleFilter: BiquadFilterNode | null = null;
+  private meteorRumbleOscillator: OscillatorNode | null = null;
 
   private constructor() {}
 
@@ -74,6 +79,10 @@ export class AudioSystem {
       tvSwitch: { frequency: 145, endFrequency: 48, duration: 0.075, gain: 0.13, type: 'square', harmonic: 0.5, noise: 0.72 },
       tvPowerOn: { frequency: 42, endFrequency: 155, duration: 0.76, gain: 0.1, type: 'sawtooth', harmonic: 2, noise: 0.34 },
       tvPowerOff: { frequency: 210, endFrequency: 26, duration: 0.68, gain: 0.12, type: 'sawtooth', harmonic: 0.5, noise: 0.48 },
+      clockAlign: { frequency: 92, endFrequency: 740, duration: 1.8, gain: 0.085, type: 'triangle', harmonic: 2, noise: 0.08 },
+      timeWarp: { frequency: 48, endFrequency: 1250, duration: 2.35, gain: 0.12, type: 'sine', harmonic: 1.5, noise: 0.34 },
+      meteorSplit: { frequency: 560, endFrequency: 46, duration: 0.72, gain: 0.15, type: 'sawtooth', harmonic: 0.5, noise: 0.82 },
+      meteorImpact: { frequency: 84, endFrequency: 18, duration: 1.6, gain: 0.22, type: 'sawtooth', harmonic: 0.5, noise: 0.92 },
     };
     if (this.context?.state === 'suspended') void this.context.resume();
     this.tone(shapes[event]);
@@ -96,9 +105,92 @@ export class AudioSystem {
     this.ambienceNodes = [];
   }
 
+  public startMeteorRumble(): void {
+    const context = this.context;
+    const master = this.master;
+    if (!context || !master || this.meteorRumbleGain) return;
+    const gain = context.createGain();
+    const filter = context.createBiquadFilter();
+    const oscillator = context.createOscillator();
+    const noise = context.createBufferSource();
+    const buffer = context.createBuffer(1, Math.floor(context.sampleRate * 1.5), context.sampleRate);
+    const samples = buffer.getChannelData(0);
+    let previous = 0;
+    for (let index = 0; index < samples.length; index += 1) {
+      previous = previous * 0.88 + (Math.random() * 2 - 1) * 0.12;
+      samples[index] = previous;
+    }
+    const now = context.currentTime;
+    gain.gain.setValueAtTime(0.0001, now);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(180, now);
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(38, now);
+    noise.buffer = buffer;
+    noise.loop = true;
+    oscillator.connect(gain);
+    noise.connect(filter).connect(gain);
+    gain.connect(master);
+    oscillator.start();
+    noise.start();
+    this.meteorRumbleGain = gain;
+    this.meteorRumbleFilter = filter;
+    this.meteorRumbleOscillator = oscillator;
+    this.meteorRumbleNodes = [gain, filter, oscillator, noise];
+  }
+
+  public setMeteorRumble(heat: number): void {
+    if (!this.meteorRumbleGain && this.context?.state === 'running') this.startMeteorRumble();
+    const context = this.context;
+    const gain = this.meteorRumbleGain;
+    const filter = this.meteorRumbleFilter;
+    const oscillator = this.meteorRumbleOscillator;
+    if (!context || !gain || !filter || !oscillator) return;
+    const amount = Math.max(0, Math.min(1, heat));
+    const now = context.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    filter.frequency.cancelScheduledValues(now);
+    oscillator.frequency.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
+    filter.frequency.setValueAtTime(filter.frequency.value, now);
+    oscillator.frequency.setValueAtTime(oscillator.frequency.value, now);
+    gain.gain.linearRampToValueAtTime(0.004 + amount * 0.075, now + 0.18);
+    filter.frequency.linearRampToValueAtTime(190 + amount * 980, now + 0.2);
+    oscillator.frequency.linearRampToValueAtTime(38 + amount * 34, now + 0.2);
+  }
+
+  public stopAllLoops(): void {
+    this.requestedAmbience = null;
+    this.stopAmbience();
+    this.stopTelevisionStatic();
+    this.stopMeteorRumble();
+  }
+
+  public stopMeteorRumble(): void {
+    const context = this.context;
+    const gain = this.meteorRumbleGain;
+    const nodes = this.meteorRumbleNodes;
+    this.meteorRumbleGain = null;
+    this.meteorRumbleFilter = null;
+    this.meteorRumbleOscillator = null;
+    this.meteorRumbleNodes = [];
+    if (!context || !gain) return;
+    const now = context.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    window.setTimeout(() => {
+      nodes.forEach((node) => {
+        try { (node as AudioScheduledSourceNode).stop(); } catch { /* not a source or already stopped */ }
+        try { node.disconnect(); } catch { /* already disconnected */ }
+      });
+    }, 280);
+  }
+
   public suspendForTelevision(): void {
     this.stopAmbience();
     this.stopTelevisionStatic();
+    this.stopMeteorRumble();
   }
 
   public resumeForTelevision(): void {

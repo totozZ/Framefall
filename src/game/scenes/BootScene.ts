@@ -15,6 +15,8 @@ export class BootScene extends Phaser.Scene {
       this.scene.start('CaveScene', {
         previewX: Number(previewParams.get('x')) || undefined,
         previewLight: previewParams.get('light') === '1',
+        previewAltarReady: previewParams.get('altar') === '1',
+        previewAltarReveal: previewParams.get('reveal') === '1',
       });
     } else if (previewScene === 'well') {
       this.scene.start('WellTransitionScene', { entryX: 160 });
@@ -23,6 +25,9 @@ export class BootScene extends Phaser.Scene {
         skipIntro: true,
         previewX: Number(previewParams.get('x')) || undefined,
         previewWater: previewParams.get('water') === '1',
+        previewMeteorElapsedMs: previewParams.has('meteor')
+          ? Math.max(0, Number(previewParams.get('elapsed')) || 0)
+          : undefined,
       });
     } else {
       this.scene.start('SurfaceScene');

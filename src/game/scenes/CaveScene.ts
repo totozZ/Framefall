@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { CAVE, CAMERA_CONFIG, GameState, HAZARD_CONFIG } from '../config/constants';
+import { CAVE, CAMERA_CONFIG, GameState, HAZARD_CONFIG, PLAYER_CONFIG } from '../config/constants';
 import { Candle } from '../entities/Candle';
+import { ClockAltar } from '../entities/ClockAltar';
 import { FinalCard } from '../entities/FinalCard';
 import { Player } from '../entities/Player';
 import { AudioSystem } from '../systems/AudioSystem';
@@ -16,6 +17,8 @@ interface CaveSceneData {
   fromWell?: boolean;
   previewX?: number;
   previewLight?: boolean;
+  previewAltarReady?: boolean;
+  previewAltarReveal?: boolean;
 }
 
 interface DripSource {
@@ -51,6 +54,8 @@ export class CaveScene extends Phaser.Scene {
   private lighting!: LightingSystem;
   private cardSystem!: CardSystem;
   private cameraEffects!: CameraEffects;
+  private crt!: CRTSystem;
+  private clockAltar!: ClockAltar;
   private spikes!: Phaser.Physics.Arcade.StaticGroup;
   private spikeWarnings: SpikeWarning[] = [];
   private hangingBats: HangingBat[] = [];
@@ -61,6 +66,13 @@ export class CaveScene extends Phaser.Scene {
   private nextSafeSampleAt = 0;
   private startX = 58;
   private previewLight = false;
+  private previewAltarReady = false;
+  private previewAltarReveal = false;
+  private finalCardCollected = false;
+  private altarPassageArmed = false;
+  private altarRoomRevealed = false;
+  private offscreenWalkMs = 0;
+  private offscreenAutoWalk = false;
 
   public constructor() {
     super('CaveScene');
@@ -70,13 +82,21 @@ export class CaveScene extends Phaser.Scene {
     this.fromWell = data.fromWell ?? false;
     this.startX = data.previewX ?? 58;
     this.previewLight = data.previewLight ?? false;
+    this.previewAltarReady = data.previewAltarReady ?? false;
+    this.previewAltarReveal = data.previewAltarReveal ?? false;
   }
 
   public create(): void {
     this.state = GameState.CAVE_LANDING;
     this.landed = false;
+    this.finalCardCollected = this.previewAltarReady || this.previewAltarReveal;
+    this.altarPassageArmed = false;
+    this.altarRoomRevealed = false;
+    this.offscreenWalkMs = 0;
+    this.offscreenAutoWalk = false;
     this.respawnPoint.set(this.startX, CAVE.floorY - 4);
-    new CRTSystem().reset();
+    this.crt = new CRTSystem();
+    this.crt.reset();
     this.cardSystem = new CardSystem();
     this.cameraEffects = new CameraEffects(this.cameras.main);
     this.particles = new ParticleSystem(this, 180);
@@ -117,6 +137,8 @@ export class CaveScene extends Phaser.Scene {
 
     this.finalCard = new FinalCard(this, CAVE.finalCardX, CAVE.floorY - 13);
     this.physics.add.overlap(this.player, this.finalCard, () => this.collectFinalCard());
+    this.clockAltar = new ClockAltar(this, CAVE.clockAltarX, CAVE.floorY, () => this.beginClockAltar());
+    this.clockAltar.setActive(this.finalCardCollected);
     this.createFinalCardAura();
     this.createWaterDrips();
     this.createIncomingTransition();
@@ -132,6 +154,7 @@ export class CaveScene extends Phaser.Scene {
         warning.sparks.forEach((spark) => spark.destroy());
       });
       this.spikeWarnings.length = 0;
+      this.clockAltar.destroy();
     });
   }
 
@@ -143,10 +166,22 @@ export class CaveScene extends Phaser.Scene {
     this.updateDizzyStars(time);
     this.updateHangingBats(time);
     this.updateSpikeWarnings(time);
+    this.clockAltar.update(
+      time,
+      this.player,
+      this.state === GameState.PLAYING && this.finalCardCollected && this.altarRoomRevealed,
+    );
+    this.updateHiddenAltarReveal(delta);
 
     if (!this.landed && this.player.isGrounded()) this.handleLanding();
 
     if (this.state === GameState.PLAYING) {
+      // CARD_03 is the cave's narrative gate. A horizontal crossing check keeps
+      // a high jump from bypassing its short physical overlap body and leaving
+      // the camera in normal follow mode beyond the intended end composition.
+      if (!this.finalCardCollected && this.player.x >= CAVE.finalCardX - 10) {
+        this.collectFinalCard();
+      }
       this.candles.forEach((candle) => {
         candle.tryIgnite(this.player.x, this.particles, () => this.lighting.addCandle(candle.x, candle.y));
       });
@@ -170,11 +205,12 @@ export class CaveScene extends Phaser.Scene {
     add(165, 160, 330);
     add(497, 160, 254);
     add(790, 160, 220);
-    add(1135, 160, 370);
+    add(1425, 160, 950);
     add(350, 143, 34, 7);
     add(650, 137, 38, 7);
     add(925, 144, 42, 7);
     add(1072, 130, 34, 7);
+    add(CAVE.clockAltarX, 140, 84, 7);
     return platforms;
   }
 
@@ -259,15 +295,38 @@ export class CaveScene extends Phaser.Scene {
       cave.fillStyle(0x26292a, 0.55).fillRect(x + 2, 21, 5, Math.max(2, Math.floor(length * 0.35)));
     }
 
+    // The altar chamber sits beyond the final-card composition. Its heavy
+    // stone throat only becomes visible once the camera pans into this range.
+    const chamberLeft = CAVE.clockAltarX - 160;
+    cave.fillStyle(0x010305, 1).fillRect(chamberLeft, 27, 320, CAVE.floorY - 27);
+    cave.fillStyle(0x11161a, 1)
+      .fillRect(chamberLeft, 27, 15, CAVE.floorY - 27)
+      .fillRect(chamberLeft + 305, 27, 15, CAVE.floorY - 27)
+      .fillRect(chamberLeft, 27, 320, 9);
+    cave.fillStyle(0x30383a, 0.68)
+      .fillRect(chamberLeft + 4, 31, 4, 104)
+      .fillRect(chamberLeft + 309, 34, 3, 101)
+      .fillRect(chamberLeft + 18, 31, 284, 2);
+    cave.fillStyle(0x070b0e, 1)
+      .fillTriangle(chamberLeft, 27, chamberLeft + 33, 63, chamberLeft + 58, 27)
+      .fillTriangle(chamberLeft + 262, 27, chamberLeft + 286, 57, chamberLeft + 320, 27);
+    for (let index = 0; index < 7; index += 1) {
+      const runeX = chamberLeft + 42 + index * 38;
+      cave.fillStyle(index % 2 === 0 ? 0x3e5552 : 0x2d4140, 0.34)
+        .fillRect(runeX, 57 + index % 3 * 8, 1, 10)
+        .fillRect(runeX - 3, 61 + index % 3 * 8, 7, 1);
+    }
+
     // Floor segments match the physical gaps.
     this.drawGroundSegment(cave, 0, 330);
     this.drawGroundSegment(cave, 370, 254);
     this.drawGroundSegment(cave, 680, 220);
-    this.drawGroundSegment(cave, 950, 370);
+    this.drawGroundSegment(cave, 950, 950);
     this.drawCaveLedge(cave, 333, 139, 34);
     this.drawCaveLedge(cave, 631, 133, 38);
     this.drawCaveLedge(cave, 904, 140, 42);
     this.drawCaveLedge(cave, 1055, 126, 34);
+    this.drawCaveLedge(cave, CAVE.clockAltarX - 42, 136, 84);
 
     // Dark wells beneath the stepping stones, with dim teeth far below.
     const pits: Array<[number, number]> = [[330, 40], [624, 56], [900, 50]];
@@ -482,7 +541,70 @@ export class CaveScene extends Phaser.Scene {
       this.hideDizzy();
       this.player.setControlEnabled(true);
       this.state = GameState.PLAYING;
+      if (this.previewAltarReveal) this.revealHiddenAltar(true);
+      else if (this.previewAltarReady) this.armHiddenAltarPassage();
     });
+  }
+
+  private armHiddenAltarPassage(): void {
+    if (this.altarPassageArmed || this.altarRoomRevealed) return;
+    this.cameras.main.stopFollow();
+    this.cameras.main.setFollowOffset(0, 0);
+    this.altarPassageArmed = true;
+    this.offscreenWalkMs = 0;
+    this.offscreenAutoWalk = false;
+  }
+
+  private updateHiddenAltarReveal(delta: number): void {
+    if (!this.altarPassageArmed || this.state !== GameState.PLAYING) return;
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    if (
+      !this.offscreenAutoWalk
+      && this.player.x > this.cameras.main.worldView.right - 14
+      && body.velocity.x > 20
+    ) {
+      this.offscreenAutoWalk = true;
+      this.player.setControlEnabled(false);
+    }
+    if (this.offscreenAutoWalk) {
+      this.player.setAccelerationX(0).setVelocityX(PLAYER_CONFIG.maxSpeed);
+    }
+    const playerBeyondFrame = this.player.x - this.cameras.main.worldView.right > this.player.displayWidth * 0.35;
+    if (playerBeyondFrame && this.offscreenAutoWalk) {
+      this.offscreenWalkMs += Math.min(delta, 50);
+    }
+    if (this.offscreenWalkMs >= CAVE.hiddenWalkDurationMs) this.revealHiddenAltar(false);
+  }
+
+  private revealHiddenAltar(instant: boolean): void {
+    if (this.altarRoomRevealed) return;
+    this.altarPassageArmed = false;
+    this.altarRoomRevealed = true;
+    this.cameras.main.stopFollow();
+
+    if (instant) {
+      this.player.setPosition(CAVE.clockAltarX - 82, CAVE.floorY - 4).setVelocity(0);
+      this.cameras.main.centerOn(CAVE.clockAltarX, 90);
+      this.state = GameState.PLAYING;
+      this.player.setControlEnabled(true);
+      return;
+    }
+
+    this.state = GameState.ALTAR_REVEAL;
+    this.player.setControlEnabled(false);
+    this.player.setAcceleration(0).setVelocity(0);
+    AudioSystem.instance.play('crtDistortion');
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.PAN_COMPLETE, () => {
+      this.state = GameState.PLAYING;
+      this.player.setControlEnabled(true);
+    });
+    this.cameras.main.pan(
+      CAVE.clockAltarX,
+      90,
+      CAVE.altarCameraPanMs,
+      'Sine.easeInOut',
+      true,
+    );
   }
 
   private handleHazard(): void {
@@ -611,11 +733,184 @@ export class CaveScene extends Phaser.Scene {
       AudioSystem.instance.play('cardOpen');
       this.cardSystem.open('CARD_03', () => {
         this.scene.resume(this.scene.key);
+        this.finalCardCollected = true;
+        this.clockAltar.setActive(true);
         this.state = GameState.PLAYING;
         this.player.setControlEnabled(true);
+        this.armHiddenAltarPassage();
         AudioSystem.instance.play('cardClose');
       });
       this.scene.pause();
+    });
+  }
+
+  private beginClockAltar(): void {
+    if (this.state !== GameState.PLAYING || !this.finalCardCollected) return;
+    this.state = GameState.CLOCK_ALTAR;
+    this.player.setControlEnabled(false);
+    this.player.setAcceleration(0).setVelocity(0);
+    AudioSystem.instance.play('clockAlign');
+    this.beginTimeWarp();
+  }
+
+  private beginTimeWarp(): void {
+    if (this.state !== GameState.CLOCK_ALTAR) return;
+    this.state = GameState.TELEPORTING;
+    AudioSystem.instance.play('timeWarp');
+    AudioSystem.instance.stopAmbience();
+    const camera = this.cameras.main;
+    camera.stopFollow();
+    const focusX = this.player.x;
+    const focusY = this.player.y - 9;
+    const clockFaceY = CAVE.floorY - 50;
+
+    // A broken clock dial folds inward instead of covering the whole scene in
+    // a generic white fade. Its uneven arcs retain the cave's pixel language.
+    for (let ringIndex = 0; ringIndex < 4; ringIndex += 1) {
+      const ring = this.add.graphics().setPosition(focusX, focusY).setDepth(1101 + ringIndex);
+      for (let segment = 0; segment < 8; segment += 1) {
+        const start = segment * Math.PI / 4 + ringIndex * 0.11;
+        const gap = 0.17 + ((segment + ringIndex) % 3) * 0.04;
+        ring.lineStyle(
+          ringIndex % 2 === 0 ? 2 : 1,
+          segment % 3 === 0 ? 0xe8fff7 : 0x74c9c8,
+          0.7 - ringIndex * 0.1,
+        ).beginPath().arc(0, 0, 19 + ringIndex * 9, start + gap, start + Math.PI / 4 - gap).strokePath();
+      }
+      ring.setScale(1.65 + ringIndex * 0.18).setAlpha(0);
+      this.tweens.add({
+        targets: ring,
+        scale: 0.14,
+        rotation: (ringIndex % 2 === 0 ? 1 : -1) * (1.4 + ringIndex * 0.35),
+        alpha: { from: 0.78 - ringIndex * 0.08, to: 0 },
+        delay: ringIndex * 90,
+        duration: 1550 + ringIndex * 100,
+        ease: 'Cubic.In',
+        onComplete: () => ring.destroy(),
+      });
+    }
+
+    for (let index = 0; index < 20; index += 1) {
+      const angle = index * Math.PI / 10;
+      const radius = 42 + index % 4 * 6;
+      const tick = this.add.rectangle(
+        focusX + Math.cos(angle) * radius,
+        focusY + Math.sin(angle) * radius,
+        index % 5 === 0 ? 5 : 3,
+        1,
+        index % 3 === 0 ? 0xdbfff6 : 0x689f9f,
+        0.72,
+      ).setRotation(angle).setDepth(1105);
+      this.tweens.add({
+        targets: tick,
+        x: focusX + ((index % 3) - 1) * 2,
+        y: focusY + ((index % 4) - 2),
+        rotation: angle + (index % 2 === 0 ? 2.4 : -2.1),
+        alpha: 0,
+        delay: 120 + index * 22,
+        duration: 1180 + index * 18,
+        ease: 'Cubic.In',
+        onComplete: () => tick.destroy(),
+      });
+    }
+
+    const slit = this.add.graphics().setPosition(focusX, focusY + 4).setDepth(1100);
+    slit.fillStyle(0x6acbc9, 0.13).fillPoints([
+      new Phaser.Geom.Point(-18, 48),
+      new Phaser.Geom.Point(-3, -72),
+      new Phaser.Geom.Point(3, -72),
+      new Phaser.Geom.Point(18, 48),
+    ], true);
+    slit.fillStyle(0xeafff9, 0.78).fillRect(-1, -74, 2, 122);
+    slit.setScale(1, 0.02).setAlpha(0);
+    this.tweens.add({
+      targets: slit,
+      scaleY: 1,
+      alpha: { from: 0, to: 1 },
+      duration: 720,
+      ease: 'Cubic.Out',
+    });
+
+    const portalGlow = this.add.image(focusX, focusY, 'organic-light')
+      .setTint(0xa9eee0)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(1099)
+      .setScale(0.16, 0.55)
+      .setAlpha(0);
+    this.tweens.add({
+      targets: portalGlow,
+      alpha: 0.52,
+      scaleX: 0.38,
+      scaleY: 0.78,
+      duration: 920,
+      yoyo: true,
+      hold: 380,
+      ease: 'Sine.InOut',
+      onComplete: () => portalGlow.destroy(),
+    });
+
+    for (let index = 0; index < 9; index += 1) {
+      const afterimage = this.add.image(focusX, this.player.y, this.player.texture.key)
+        .setOrigin(this.player.originX, this.player.originY)
+        .setDepth(1106)
+        .setTint(index % 3 === 0 ? 0xf0fff9 : index % 2 === 0 ? 0x71d8d2 : 0x7396b8)
+        .setAlpha(0.1 + index * 0.025);
+      this.tweens.add({
+        targets: afterimage,
+        x: CAVE.clockAltarX + ((index % 3) - 1) * 2,
+        y: clockFaceY + (index % 2 === 0 ? -3 : 3),
+        scaleX: 0.08,
+        scaleY: 0.22,
+        alpha: 0,
+        duration: 980 + index * 70,
+        delay: 280 + index * 55,
+        ease: 'Cubic.In',
+        onComplete: () => afterimage.destroy(),
+      });
+    }
+
+    const localFlash = this.add.rectangle(0, 0, 320, 180, 0xeafff8, 0)
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setDepth(1200)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    const warp = { amount: 0 };
+    this.tweens.add({
+      targets: warp,
+      amount: 0.76,
+      duration: 980,
+      yoyo: true,
+      ease: 'Sine.InOut',
+      onUpdate: () => this.crt.setDistortion(warp.amount),
+    });
+    this.tweens.add({
+      targets: localFlash,
+      alpha: 0.72,
+      delay: 1430,
+      duration: 110,
+      yoyo: true,
+      hold: 45,
+      ease: 'Cubic.Out',
+      onYoyo: () => {
+        this.player.setVisible(false);
+        const body = this.player.body as Phaser.Physics.Arcade.Body;
+        body.enable = false;
+        camera.shake(260, 0.012);
+      },
+      onComplete: () => localFlash.destroy(),
+    });
+    this.tweens.add({
+      targets: slit,
+      scaleX: 0.04,
+      scaleY: 0.1,
+      alpha: 0,
+      delay: 1540,
+      duration: 680,
+      ease: 'Cubic.In',
+      onComplete: () => {
+        slit.destroy();
+        this.crt.reset();
+      },
     });
   }
 }

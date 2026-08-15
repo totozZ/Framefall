@@ -712,6 +712,78 @@ body.crt-distorting #game-container {
   100% { opacity: 0; transform: scale(0, 0.003); filter: brightness(8); }
 }
 
+.meteor-page-blackout {
+  position: fixed;
+  z-index: 2147483647;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: none;
+  outline: none;
+  isolation: isolate;
+}
+
+.meteor-page-blackout i {
+  position: fixed;
+  display: block;
+  pointer-events: none;
+}
+
+.meteor-page-wave {
+  top: var(--meteor-impact-y);
+  left: var(--meteor-impact-x);
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgb(242 250 238 / 88%);
+  border-radius: 50%;
+  box-shadow:
+    0 0 15px rgb(255 238 202 / 82%),
+    0 0 42px rgb(222 71 48 / 66%),
+    inset 0 0 12px rgb(255 255 255 / 55%);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.15);
+  animation: meteor-page-wave var(--meteor-wave-duration) cubic-bezier(0.1, 0.72, 0.18, 1) both;
+  backdrop-filter: invert(0.72) contrast(1.6) hue-rotate(155deg);
+  mix-blend-mode: screen;
+}
+
+.meteor-page-darkness {
+  inset: -2px;
+  background: #000;
+  clip-path: circle(0 at var(--meteor-impact-x) var(--meteor-impact-y));
+  animation: meteor-page-darkness var(--meteor-blackout-duration) cubic-bezier(0.42, 0, 0.2, 1) 120ms forwards;
+}
+
+body.meteor-impacting #game-shell {
+  transform-origin: var(--meteor-impact-x, 70%) var(--meteor-impact-y, 70%);
+  animation: meteor-page-warp 920ms steps(8, end) both;
+}
+
+body.meteor-impacting {
+  overflow: hidden;
+}
+
+@keyframes meteor-page-wave {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.15); }
+  9% { opacity: 1; }
+  72% { opacity: 0.72; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(var(--meteor-wave-scale)); }
+}
+
+@keyframes meteor-page-darkness {
+  0% { clip-path: circle(0 at var(--meteor-impact-x) var(--meteor-impact-y)); }
+  42% { clip-path: circle(22vmax at var(--meteor-impact-x) var(--meteor-impact-y)); }
+  100% { clip-path: circle(180vmax at var(--meteor-impact-x) var(--meteor-impact-y)); }
+}
+
+@keyframes meteor-page-warp {
+  0% { transform: translate(0, 0) scale(1); filter: none; }
+  18% { transform: translate(-2px, 1px) scaleX(1.012); filter: contrast(1.35) saturate(1.4); }
+  39% { transform: translate(3px, -1px) scaleY(0.986); filter: contrast(1.7) hue-rotate(-14deg); }
+  62% { transform: translate(-4px, 2px) scale(1.018, 0.972); filter: invert(0.12) contrast(2); }
+  100% { transform: translate(0, 0) scale(1); filter: brightness(0); }
+}
+
 @keyframes tv-shutdown-line {
   0%, 34% { width: 96%; height: 3px; opacity: 0; }
   42% { width: 96%; height: 3px; opacity: 1; }
