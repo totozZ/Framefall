@@ -11,6 +11,8 @@ export const PLAYER_CONFIG = {
   jumpVelocity: -238,
   coyoteTimeMs: 105,
   jumpBufferMs: 115,
+  turnDurationMs: 250,
+  turnFlipDelayMs: 125,
   bodyWidth: 19,
   bodyHeight: 10,
   bodyOffsetX: 3,

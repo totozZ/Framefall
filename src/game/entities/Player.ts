@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { PLAYER_CONFIG } from '../config/constants';
 import { AudioSystem } from '../systems/AudioSystem';
 
-type PlayerAnimation = 'idle' | 'run' | 'jump' | 'fall' | 'land' | 'dizzy';
+type PlayerAnimation = 'idle' | 'turn' | 'run' | 'jump' | 'fall' | 'land' | 'dizzy';
+type FacingDirection = -1 | 1;
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private controlsEnabled = false;
@@ -12,6 +13,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private landingUntil = -Infinity;
   private dizzy = false;
   private lastFootstepAt = -Infinity;
+  private facing: FacingDirection = 1;
+  private pendingFacing: FacingDirection = 1;
+  private turningUntil = -Infinity;
+  private turnFlipAt = -Infinity;
   private readonly pointerDownHandler: () => void;
 
   public constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -60,7 +65,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (grounded) this.lastGroundedAt = time;
 
     if (this.controlsEnabled) {
-      this.updateHorizontalMovement();
+      this.updateHorizontalMovement(time, grounded);
       this.tryJump(time);
     } else if (grounded) {
       this.setAccelerationX(0);
@@ -72,6 +77,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       AudioSystem.instance.play('land');
       this.emit('land', this.x, this.y);
     }
+    this.updateFacing(time, grounded);
     this.updateAnimation(time, grounded);
     this.wasGrounded = grounded;
   }
@@ -80,7 +86,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.body as Phaser.Physics.Arcade.Body;
   }
 
-  private updateHorizontalMovement(): void {
+  private updateHorizontalMovement(time: number, grounded: boolean): void {
     const pointerX = this.scene.input.activePointer.x;
     const screenX = this.x - this.scene.cameras.main.worldView.x;
     const distance = pointerX - screenX;
@@ -92,7 +98,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return;
     }
 
-    const direction = Math.sign(distance);
+    const direction: FacingDirection = distance < 0 ? -1 : 1;
     const speedScale = Phaser.Math.Clamp(
       (magnitude - PLAYER_CONFIG.deadZone) / (PLAYER_CONFIG.slowZone - PLAYER_CONFIG.deadZone),
       0,
@@ -107,7 +113,44 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setAccelerationX(0);
       this.setVelocityX(targetSpeed);
     }
+    this.requestFacing(direction, time, grounded);
+  }
+
+  private requestFacing(direction: FacingDirection, time: number, grounded: boolean): void {
+    if (!grounded) {
+      this.applyFacing(direction);
+      return;
+    }
+    if (direction === this.pendingFacing) return;
+    if (direction === this.facing) {
+      this.pendingFacing = direction;
+      this.turningUntil = -Infinity;
+      this.turnFlipAt = -Infinity;
+      return;
+    }
+    this.pendingFacing = direction;
+    this.turnFlipAt = time + PLAYER_CONFIG.turnFlipDelayMs;
+    this.turningUntil = time + PLAYER_CONFIG.turnDurationMs;
+  }
+
+  private updateFacing(time: number, grounded: boolean): void {
+    if (!grounded) {
+      this.applyFacing(this.pendingFacing);
+      return;
+    }
+    if (time >= this.turnFlipAt && this.facing !== this.pendingFacing) {
+      this.applyFacing(this.pendingFacing, false);
+    }
+  }
+
+  private applyFacing(direction: FacingDirection, cancelTurn = true): void {
+    this.facing = direction;
+    this.pendingFacing = direction;
     this.setFlipX(direction < 0);
+    if (cancelTurn) {
+      this.turningUntil = -Infinity;
+      this.turnFlipAt = -Infinity;
+    }
   }
 
   private tryJump(time: number): void {
@@ -137,6 +180,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.playState('land');
       return;
     }
+    if (time < this.turningUntil) {
+      this.anims.timeScale = 1;
+      this.playState('turn');
+      return;
+    }
     if (Math.abs(this.bodyRef.velocity.x) > 9) {
       this.anims.timeScale = Phaser.Math.Clamp(Math.abs(this.bodyRef.velocity.x) / 72, 0.72, 1.38);
       this.playState('run');
@@ -158,6 +206,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private createAnimations(): void {
     const animations: Array<{ key: PlayerAnimation; frames: string[]; frameRate: number; repeat: number }> = [
       { key: 'idle', frames: ['player-idle-0', 'player-idle-1'], frameRate: 2, repeat: -1 },
+      {
+        key: 'turn',
+        frames: ['player-turn-0', 'player-turn-1', 'player-turn-2', 'player-turn-1', 'player-turn-0'],
+        frameRate: 20,
+        repeat: 0,
+      },
       {
         key: 'run',
         frames: [
