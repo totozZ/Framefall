@@ -25,6 +25,48 @@ interface BackgroundStar {
   speed: number;
 }
 
+interface CometPathSample {
+  t: number;
+  x: number;
+  y: number;
+  distance: number;
+}
+
+const COMET_CONFIG = {
+  triggerOffsetX: 160,
+  gardenMarginX: 80,
+  nucleusSize: 9,
+  nucleusIrregularity: 2,
+  nucleusRotation: 0.2,
+  glowIntensity: 0.34,
+  comaRadius: 16,
+  comaOpacity: 0.2,
+  gasTailLength: 76,
+  gasTailWidth: 7,
+  dustParticleIntervalMs: 28,
+  dustTailSpread: 4,
+  particleLifetimeMs: 390,
+  flowSpeed: 0.009,
+  flickerAmount: 0.09,
+  pathSamples: 32,
+  initialSpeed: 240,
+  linearAcceleration: 720,
+  path: {
+    start: { x: -62, y: 17 },
+    control: { x: 140, y: 26 },
+    end: { x: 376, y: 105 },
+  },
+  colors: {
+    deepIce: 0x203b48,
+    blueGrey: 0x3e6570,
+    teal: 0x43c5bf,
+    cyan: 0x57d8ef,
+    paleBlue: 0xbcefff,
+    icyGreen: 0x8de2c5,
+    whiteIce: 0xe9fbff,
+  },
+} as const;
+
 export class SurfaceScene extends Phaser.Scene {
   private state = GameState.INTRO;
   private player!: Player;
@@ -40,6 +82,11 @@ export class SurfaceScene extends Phaser.Scene {
   private hintTimer?: Phaser.Time.TimerEvent;
   private cloudSprites: Phaser.GameObjects.Sprite[] = [];
   private backgroundStars: BackgroundStar[] = [];
+  private activeComet?: Phaser.GameObjects.Container;
+  private cometTrailParticles: Phaser.GameObjects.Image[] = [];
+  private nextCometParticleAt = 0;
+  private cometParticleIndex = 0;
+  private cometTriggered = false;
   private skipIntro = false;
   private startX = 64;
   private previewWater = false;
@@ -56,6 +103,11 @@ export class SurfaceScene extends Phaser.Scene {
 
   public create(): void {
     this.state = GameState.INTRO;
+    this.cometTriggered = false;
+    this.activeComet = undefined;
+    this.cometTrailParticles.length = 0;
+    this.nextCometParticleAt = 0;
+    this.cometParticleIndex = 0;
     this.cardSystem = new CardSystem();
     this.crt = new CRTSystem();
     this.crt.reset();
@@ -118,6 +170,10 @@ export class SurfaceScene extends Phaser.Scene {
       this.water.destroy();
       this.pigeons.destroy();
       this.hintTimer?.destroy();
+      this.activeComet?.destroy(true);
+      this.activeComet = undefined;
+      this.cometTrailParticles.forEach((particle) => particle.destroy());
+      this.cometTrailParticles.length = 0;
     });
   }
 
@@ -132,6 +188,7 @@ export class SurfaceScene extends Phaser.Scene {
     this.updateStars(time);
 
     const velocityX = (this.player.body as Phaser.Physics.Arcade.Body).velocity.x;
+    this.tryTriggerBlueComet(velocityX);
     this.cameras.main.setFollowOffset(-Math.sign(velocityX) * CAMERA_CONFIG.lookAhead, 0);
 
     if (this.state === GameState.PLAYING && this.player.x > SURFACE.wellLeft && this.player.x < SURFACE.wellRight && this.player.y > 168) {
@@ -471,6 +528,372 @@ export class SurfaceScene extends Phaser.Scene {
       const occasionalGlimmer = Math.max(0, Math.sin(time * 0.00043 + index * 2.31)) ** 8 * 0.18;
       star.sprite.setAlpha(Phaser.Math.Clamp(star.baseAlpha + slowPulse + occasionalGlimmer, 0.08, 0.55));
     });
+  }
+
+  private tryTriggerBlueComet(velocityX: number): void {
+    const triggerX = SURFACE.hydrantX - COMET_CONFIG.triggerOffsetX;
+    const gardenLeft = SURFACE.hydrantX - COMET_CONFIG.gardenMarginX;
+    if (
+      this.cometTriggered
+      || this.state !== GameState.PLAYING
+      || velocityX < 20
+      || this.player.x < triggerX
+      || this.player.x >= gardenLeft
+    ) return;
+
+    this.cometTriggered = true;
+    this.launchBlueComet();
+  }
+
+  private launchBlueComet(): void {
+    const outerGas = this.createCometGasTail(
+      COMET_CONFIG.gasTailLength,
+      COMET_CONFIG.gasTailWidth,
+      COMET_CONFIG.colors.teal,
+      0.12,
+      0,
+    );
+    const middleGas = this.createCometGasTail(
+      Math.round(COMET_CONFIG.gasTailLength * 0.76),
+      COMET_CONFIG.gasTailWidth * 0.66,
+      COMET_CONFIG.colors.cyan,
+      0.2,
+      1,
+    );
+    const innerGas = this.createCometGasTail(
+      Math.round(COMET_CONFIG.gasTailLength * 0.48),
+      COMET_CONFIG.gasTailWidth * 0.34,
+      COMET_CONFIG.colors.paleBlue,
+      0.42,
+      2,
+    );
+
+    const coma = this.add.image(0, 0, 'organic-light')
+      .setTint(COMET_CONFIG.colors.cyan)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(COMET_CONFIG.comaRadius / 96, COMET_CONFIG.comaRadius / 112)
+      .setAlpha(COMET_CONFIG.comaOpacity);
+    const innerComa = this.add.image(1, 0, 'organic-light')
+      .setTint(COMET_CONFIG.colors.icyGreen)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(COMET_CONFIG.comaRadius / 150, COMET_CONFIG.comaRadius / 180)
+      .setAlpha(COMET_CONFIG.glowIntensity);
+    const comaMist = this.createCometMist();
+    const nucleus = this.createCometNucleus();
+    const nearbyDust = this.add.graphics()
+      .setBlendMode(Phaser.BlendModes.ADD);
+    nearbyDust.fillStyle(COMET_CONFIG.colors.icyGreen, 0.75)
+      .fillRect(-8, -5, 1, 1)
+      .fillRect(-11, 4, 1, 1)
+      .fillRect(-5, 6, 1, 1)
+      .fillRect(-15, -2, 2, 1);
+
+    const comet = this.add.container(
+      COMET_CONFIG.path.start.x,
+      COMET_CONFIG.path.start.y,
+      [outerGas, middleGas, innerGas, coma, innerComa, comaMist, nearbyDust, nucleus],
+    )
+      .setDepth(-11)
+      .setScrollFactor(0);
+    this.activeComet = comet;
+    this.nextCometParticleAt = this.time.now;
+
+    const pathSamples = this.createCometPathSamples();
+    const finalPathSample = pathSamples[pathSamples.length - 1];
+    if (!finalPathSample) return;
+    const pathLength = finalPathSample.distance;
+    const flightDurationSeconds = (
+      -COMET_CONFIG.initialSpeed
+      + Math.sqrt(
+        COMET_CONFIG.initialSpeed ** 2
+        + 2 * COMET_CONFIG.linearAcceleration * pathLength,
+      )
+    ) / COMET_CONFIG.linearAcceleration;
+    const motion = { elapsedSeconds: 0 };
+
+    this.tweens.add({
+      targets: motion,
+      elapsedSeconds: flightDurationSeconds,
+      duration: flightDurationSeconds * 1000,
+      ease: 'Linear',
+      onUpdate: () => {
+        const travelled = Math.min(
+          pathLength,
+          COMET_CONFIG.initialSpeed * motion.elapsedSeconds
+            + 0.5 * COMET_CONFIG.linearAcceleration * motion.elapsedSeconds ** 2,
+        );
+        const pathT = this.getCometPathT(pathSamples, travelled);
+        const point = this.getCometPathPoint(pathT);
+        const tangent = this.getCometPathTangent(pathT);
+        const rotation = Math.atan2(tangent.y, tangent.x);
+        comet.setPosition(point.x, point.y).setRotation(rotation);
+
+        const flow = this.time.now * COMET_CONFIG.flowSpeed;
+        const flicker = Math.sin(flow * 1.7) * COMET_CONFIG.flickerAmount;
+        outerGas.setScale(1 + Math.sin(flow) * 0.035, 1 + Math.sin(flow * 0.73) * 0.08);
+        middleGas.setPosition(Math.sin(flow * 1.2) * 1.2, Math.sin(flow * 0.82) * 0.6);
+        innerGas.setAlpha(0.82 + flicker).setScale(1 + flicker * 0.18, 1 - flicker * 0.12);
+        coma.setAlpha(COMET_CONFIG.comaOpacity * (1 + flicker));
+        innerComa.setAlpha(COMET_CONFIG.glowIntensity * (1 - flicker * 0.45));
+        comaMist.setRotation(-pathT * 0.7 + Math.sin(flow * 0.4) * 0.05);
+        nucleus.setRotation(pathT * COMET_CONFIG.nucleusRotation + Math.sin(flow * 0.35) * 0.025);
+        nearbyDust.setPosition(Math.sin(flow * 0.9), Math.cos(flow * 0.7));
+        this.emitCometTrailParticles(comet, rotation);
+      },
+      onComplete: () => {
+        if (this.activeComet === comet) this.activeComet = undefined;
+        comet.destroy(true);
+      },
+    });
+  }
+
+  private createCometGasTail(
+    length: number,
+    width: number,
+    color: number,
+    alpha: number,
+    variant: number,
+  ): Phaser.GameObjects.Graphics {
+    const graphics = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    const upper = [
+      new Phaser.Geom.Point(1, -1),
+      new Phaser.Geom.Point(-Math.round(length * 0.18), -Math.max(1, Math.round(width * 0.2))),
+      new Phaser.Geom.Point(-Math.round(length * 0.38), -Math.round(width * (0.32 + variant * 0.03))),
+      new Phaser.Geom.Point(-Math.round(length * 0.58), -Math.round(width * (0.58 - variant * 0.05))),
+      new Phaser.Geom.Point(-Math.round(length * 0.78), -Math.round(width * (0.74 + variant * 0.04))),
+      new Phaser.Geom.Point(-length, -Math.round(width * (0.55 + variant * 0.07))),
+    ];
+    const lower = [
+      new Phaser.Geom.Point(-length + 5 + variant * 2, Math.round(width * (0.72 - variant * 0.06))),
+      new Phaser.Geom.Point(-Math.round(length * 0.8), Math.round(width * (0.9 - variant * 0.08))),
+      new Phaser.Geom.Point(-Math.round(length * 0.62), Math.round(width * (0.48 + variant * 0.04))),
+      new Phaser.Geom.Point(-Math.round(length * 0.42), Math.round(width * (0.52 - variant * 0.06))),
+      new Phaser.Geom.Point(-Math.round(length * 0.2), Math.max(1, Math.round(width * 0.24))),
+      new Phaser.Geom.Point(1, 1),
+    ];
+    graphics.fillStyle(color, alpha).fillPoints([...upper, ...lower], true);
+    graphics.fillStyle(COMET_CONFIG.colors.icyGreen, alpha * 0.45).fillPoints([
+      new Phaser.Geom.Point(-4, 0),
+      new Phaser.Geom.Point(-Math.round(length * 0.34), -1 - variant),
+      new Phaser.Geom.Point(-Math.round(length * 0.68), variant - 1),
+      new Phaser.Geom.Point(-Math.round(length * 0.37), 1 + variant),
+    ], true);
+    return graphics;
+  }
+
+  private createCometMist(): Phaser.GameObjects.Graphics {
+    const mist = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    mist.fillStyle(COMET_CONFIG.colors.cyan, 0.11)
+      .fillEllipse(-2, -1, 17, 9)
+      .fillEllipse(2, 1, 12, 11);
+    mist.fillStyle(COMET_CONFIG.colors.icyGreen, 0.1)
+      .fillEllipse(-5, 2, 8, 7)
+      .fillEllipse(4, -2, 7, 6);
+    mist.fillStyle(COMET_CONFIG.colors.paleBlue, 0.08)
+      .fillRect(-7, -4, 4, 1)
+      .fillRect(3, 4, 3, 1);
+    return mist;
+  }
+
+  private createCometNucleus(): Phaser.GameObjects.Container {
+    const irregularity = COMET_CONFIG.nucleusIrregularity;
+    const core = this.add.graphics();
+    core.fillStyle(0x08141c, 1).fillPoints([
+      new Phaser.Geom.Point(-5 - irregularity, -1),
+      new Phaser.Geom.Point(-3, -4),
+      new Phaser.Geom.Point(1, -5),
+      new Phaser.Geom.Point(5, -3),
+      new Phaser.Geom.Point(6, 1),
+      new Phaser.Geom.Point(3, 4),
+      new Phaser.Geom.Point(-2, 5),
+      new Phaser.Geom.Point(-6, 2),
+    ], true);
+    core.fillStyle(COMET_CONFIG.colors.deepIce, 1).fillPoints([
+      new Phaser.Geom.Point(-5, -1),
+      new Phaser.Geom.Point(-2, -4),
+      new Phaser.Geom.Point(2, -4),
+      new Phaser.Geom.Point(5, -2),
+      new Phaser.Geom.Point(5, 1),
+      new Phaser.Geom.Point(2, 4),
+      new Phaser.Geom.Point(-2, 3),
+      new Phaser.Geom.Point(-5, 1),
+    ], true);
+    core.fillStyle(COMET_CONFIG.colors.blueGrey, 0.92).fillPoints([
+      new Phaser.Geom.Point(-2, -3),
+      new Phaser.Geom.Point(2, -4),
+      new Phaser.Geom.Point(4, -1),
+      new Phaser.Geom.Point(1, 1),
+      new Phaser.Geom.Point(-3, 1),
+    ], true);
+    core.fillStyle(COMET_CONFIG.colors.teal, 0.24).fillPoints([
+      new Phaser.Geom.Point(-2, -1),
+      new Phaser.Geom.Point(1, -2),
+      new Phaser.Geom.Point(3, 0),
+      new Phaser.Geom.Point(0, 2),
+    ], true);
+    core.fillStyle(0x102630, 1).fillPoints([
+      new Phaser.Geom.Point(-4, 1),
+      new Phaser.Geom.Point(1, 1),
+      new Phaser.Geom.Point(2, 4),
+      new Phaser.Geom.Point(-2, 3),
+    ], true);
+
+    const ice = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    ice.fillStyle(COMET_CONFIG.colors.icyGreen, 0.82)
+      .fillRect(-1, -3, 3, 1)
+      .fillRect(2, -2, 2, 1)
+      .fillRect(-3, 0, 2, 1);
+    ice.fillStyle(COMET_CONFIG.colors.cyan, 0.72)
+      .fillRect(0, -2, 1, 3)
+      .fillRect(-1, 1, 2, 1)
+      .fillRect(-2, 2, 1, 1);
+    ice.fillStyle(COMET_CONFIG.colors.whiteIce, 0.95)
+      .fillRect(2, -3, 2, 1)
+      .fillRect(4, -1, 1, 2);
+
+    const nucleus = this.add.container(0, 0, [core, ice]);
+    nucleus.setScale(COMET_CONFIG.nucleusSize / 10);
+    return nucleus;
+  }
+
+  private createCometPathSamples(): CometPathSample[] {
+    const samples: CometPathSample[] = [];
+    let previous = this.getCometPathPoint(0);
+    let distance = 0;
+    samples.push({ t: 0, ...previous, distance });
+    for (let index = 1; index <= COMET_CONFIG.pathSamples; index += 1) {
+      const t = index / COMET_CONFIG.pathSamples;
+      const point = this.getCometPathPoint(t);
+      distance += Phaser.Math.Distance.Between(previous.x, previous.y, point.x, point.y);
+      samples.push({ t, ...point, distance });
+      previous = point;
+    }
+    return samples;
+  }
+
+  private getCometPathT(samples: CometPathSample[], travelled: number): number {
+    const nextIndex = samples.findIndex((sample) => sample.distance >= travelled);
+    if (nextIndex <= 0) return nextIndex === 0 ? 0 : 1;
+    const previous = samples[nextIndex - 1];
+    const next = samples[nextIndex];
+    if (!previous || !next) return 1;
+    const segmentLength = next.distance - previous.distance;
+    const segmentProgress = segmentLength > 0 ? (travelled - previous.distance) / segmentLength : 0;
+    return Phaser.Math.Linear(previous.t, next.t, segmentProgress);
+  }
+
+  private getCometPathPoint(t: number): { x: number; y: number } {
+    const { start, control, end } = COMET_CONFIG.path;
+    const inverse = 1 - t;
+    return {
+      x: inverse ** 2 * start.x + 2 * inverse * t * control.x + t ** 2 * end.x,
+      y: inverse ** 2 * start.y + 2 * inverse * t * control.y + t ** 2 * end.y,
+    };
+  }
+
+  private getCometPathTangent(t: number): { x: number; y: number } {
+    const { start, control, end } = COMET_CONFIG.path;
+    return {
+      x: 2 * (1 - t) * (control.x - start.x) + 2 * t * (end.x - control.x),
+      y: 2 * (1 - t) * (control.y - start.y) + 2 * t * (end.y - control.y),
+    };
+  }
+
+  private emitCometTrailParticles(comet: Phaser.GameObjects.Container, rotation: number): void {
+    if (this.time.now < this.nextCometParticleAt) return;
+    this.nextCometParticleAt = this.time.now + COMET_CONFIG.dustParticleIntervalMs;
+
+    const index = this.cometParticleIndex;
+    this.cometParticleIndex += 1;
+    const backwards = new Phaser.Math.Vector2(-Math.cos(rotation), -Math.sin(rotation));
+    const normal = new Phaser.Math.Vector2(-backwards.y, backwards.x);
+    const spread = ((index % 7) - 3) / 3 * COMET_CONFIG.dustTailSpread;
+    const emissionX = comet.x + backwards.x * (6 + index % 4) + normal.x * spread;
+    const emissionY = comet.y + backwards.y * (6 + index % 4) + normal.y * spread;
+    const isGlimmer = index % 7 === 0;
+    const dust = this.add.image(emissionX, emissionY, isGlimmer ? 'pixel-star-cross' : 'pixel-star')
+      .setDepth(-12)
+      .setScrollFactor(0)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(index % 3 === 0
+        ? COMET_CONFIG.colors.icyGreen
+        : index % 3 === 1 ? COMET_CONFIG.colors.cyan : COMET_CONFIG.colors.blueGrey)
+      .setAlpha(isGlimmer ? 0.72 : 0.84)
+      .setScale(isGlimmer ? 1 : index % 4 === 0 ? 2 : 1);
+    this.trackCometParticle(dust);
+
+    this.tweens.add({
+      targets: dust,
+      x: dust.x + backwards.x * (10 + index % 5 * 2) + normal.x * spread * 0.55,
+      y: dust.y + backwards.y * (10 + index % 5 * 2) + normal.y * spread * 0.55,
+      alpha: 0,
+      scale: 0.25,
+      duration: COMET_CONFIG.particleLifetimeMs + (index % 5) * 32,
+      ease: 'Cubic.Out',
+      onComplete: () => this.destroyCometParticle(dust),
+    });
+
+    if (index % 2 === 0) {
+      const gas = this.add.image(
+        emissionX + backwards.x * 3,
+        emissionY + backwards.y * 3,
+        'organic-light',
+      )
+        .setDepth(-13)
+        .setScrollFactor(0)
+        .setRotation(rotation)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(index % 4 === 0 ? COMET_CONFIG.colors.teal : COMET_CONFIG.colors.cyan)
+        .setScale(0.036, 0.022)
+        .setAlpha(0.12);
+      this.trackCometParticle(gas);
+      this.tweens.add({
+        targets: gas,
+        x: gas.x + backwards.x * 17 + normal.x * spread,
+        y: gas.y + backwards.y * 17 + normal.y * spread,
+        scaleX: 0.07,
+        scaleY: 0.035 + Math.abs(spread) * 0.003,
+        alpha: 0,
+        duration: COMET_CONFIG.particleLifetimeMs + 120,
+        ease: 'Sine.Out',
+        onComplete: () => this.destroyCometParticle(gas),
+      });
+    }
+
+    if (index % 5 === 0) {
+      const iceChip = this.add.image(
+        comet.x + normal.x * (4 + index % 3),
+        comet.y + normal.y * (4 + index % 3),
+        'pixel-star',
+      )
+        .setDepth(-10)
+        .setScrollFactor(0)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(COMET_CONFIG.colors.whiteIce)
+        .setAlpha(0.8)
+        .setScale(index % 10 === 0 ? 2 : 1);
+      this.trackCometParticle(iceChip);
+      this.tweens.add({
+        targets: iceChip,
+        x: iceChip.x + normal.x * (5 + index % 4) + backwards.x * 5,
+        y: iceChip.y + normal.y * (5 + index % 4) + backwards.y * 5,
+        alpha: 0,
+        scale: 0.2,
+        duration: 220 + index % 4 * 30,
+        ease: 'Quad.Out',
+        onComplete: () => this.destroyCometParticle(iceChip),
+      });
+    }
+  }
+
+  private trackCometParticle(particle: Phaser.GameObjects.Image): void {
+    this.cometTrailParticles.push(particle);
+  }
+
+  private destroyCometParticle(particle: Phaser.GameObjects.Image): void {
+    const particleIndex = this.cometTrailParticles.indexOf(particle);
+    if (particleIndex >= 0) this.cometTrailParticles.splice(particleIndex, 1);
+    particle.destroy();
   }
 
   private drawStoneLedge(graphics: Phaser.GameObjects.Graphics, x: number, y: number, width: number): void {
