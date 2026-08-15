@@ -450,7 +450,108 @@ export class BootScene extends Phaser.Scene {
     graphics.fillStyle(0x17131a, 1).fillRect(3, 3, 17, 10);
     graphics.fillStyle(0xe3c271, 1).fillRect(5, 5, 9, 1).fillRect(5, 8, 12, 1);
     graphics.generateTexture('world-card', 23, 16);
+    this.createPigeonTextures(graphics);
     graphics.destroy();
+  }
+
+  private createPigeonTextures(graphics: Phaser.GameObjects.Graphics): void {
+    const outline = 0x25262b;
+    const shadow = 0xaeb1ae;
+    const white = 0xe8e7df;
+    const highlight = 0xf7f3e8;
+    const beak = 0xb98755;
+    const foot = 0x9a6658;
+
+    const drawGroundBody = (): void => {
+      graphics.fillStyle(outline, 1)
+        .fillRect(3, 5, 8, 5)
+        .fillRect(2, 6, 2, 3)
+        .fillRect(1, 7, 2, 2);
+      graphics.fillStyle(white, 1).fillRect(4, 5, 6, 4).fillRect(3, 6, 2, 3);
+      graphics.fillStyle(shadow, 1).fillRect(4, 7, 5, 3);
+      graphics.fillStyle(highlight, 1).fillRect(5, 5, 4, 1);
+    };
+
+    const drawFeet = (lift = 0): void => {
+      graphics.fillStyle(foot, 1)
+        .fillRect(5, 10 - lift, 1, 2)
+        .fillRect(8, 10 - lift, 1, 2)
+        .fillRect(4, 11 - lift, 3, 1)
+        .fillRect(7, 11 - lift, 3, 1);
+    };
+
+    graphics.clear();
+    drawGroundBody();
+    graphics.fillStyle(outline, 1).fillRect(9, 3, 4, 4).fillRect(8, 4, 3, 3);
+    graphics.fillStyle(white, 1).fillRect(9, 4, 3, 3).fillRect(10, 3, 2, 1);
+    graphics.fillStyle(0x111217, 1).fillRect(11, 4, 1, 1);
+    graphics.fillStyle(beak, 1).fillRect(13, 5, 2, 1);
+    drawFeet();
+    graphics.generateTexture('pigeon-idle', 16, 12);
+
+    graphics.clear();
+    drawGroundBody();
+    graphics.fillStyle(outline, 1).fillRect(9, 5, 4, 4).fillRect(8, 5, 2, 3);
+    graphics.fillStyle(white, 1).fillRect(10, 6, 3, 3);
+    graphics.fillStyle(0x111217, 1).fillRect(12, 7, 1, 1);
+    graphics.fillStyle(beak, 1).fillRect(13, 8, 2, 1);
+    drawFeet();
+    graphics.generateTexture('pigeon-peck-0', 16, 12);
+
+    graphics.clear();
+    drawGroundBody();
+    graphics.fillStyle(outline, 1).fillRect(10, 7, 4, 3).fillRect(9, 6, 2, 3);
+    graphics.fillStyle(white, 1).fillRect(11, 7, 3, 2);
+    graphics.fillStyle(0x111217, 1).fillRect(13, 7, 1, 1);
+    graphics.fillStyle(beak, 1).fillRect(14, 9, 2, 1);
+    drawFeet();
+    graphics.generateTexture('pigeon-peck-1', 16, 12);
+
+    graphics.clear();
+    drawGroundBody();
+    graphics.fillStyle(outline, 1).fillRect(9, 1, 4, 5).fillRect(8, 3, 3, 4);
+    graphics.fillStyle(white, 1).fillRect(10, 2, 3, 4).fillRect(9, 4, 2, 2);
+    graphics.fillStyle(highlight, 1).fillRect(10, 1, 2, 1);
+    graphics.fillStyle(0x111217, 1).fillRect(11, 2, 1, 1);
+    graphics.fillStyle(beak, 1).fillRect(13, 3, 2, 1);
+    drawFeet();
+    graphics.generateTexture('pigeon-alert', 16, 12);
+
+    graphics.clear();
+    drawGroundBody();
+    graphics.fillStyle(outline, 1).fillRect(9, 3, 4, 4).fillRect(7, 3, 4, 3);
+    graphics.fillStyle(white, 1).fillRect(9, 4, 3, 3);
+    graphics.fillStyle(highlight, 1).fillRect(6, 3, 4, 1);
+    graphics.fillStyle(0x111217, 1).fillRect(11, 4, 1, 1);
+    graphics.fillStyle(beak, 1).fillRect(13, 5, 2, 1);
+    drawFeet(1);
+    graphics.generateTexture('pigeon-hop', 16, 12);
+
+    for (let frame = 0; frame < 3; frame += 1) {
+      graphics.clear();
+      graphics.fillStyle(outline, 1)
+        .fillRect(4, 5, 8, 5)
+        .fillRect(2, 6, 3, 3)
+        .fillRect(11, 4, 4, 4);
+      graphics.fillStyle(white, 1)
+        .fillRect(5, 6, 7, 3)
+        .fillRect(12, 5, 3, 3)
+        .fillRect(3, 7, 3, 2);
+      graphics.fillStyle(shadow, 1).fillRect(5, 8, 6, 2);
+      if (frame === 0) {
+        graphics.fillStyle(outline, 1).fillRect(5, 0, 3, 7).fillRect(8, 2, 3, 5);
+        graphics.fillStyle(highlight, 1).fillRect(6, 1, 1, 5).fillRect(8, 3, 2, 3);
+      } else if (frame === 1) {
+        graphics.fillStyle(outline, 1).fillRect(4, 3, 8, 4).fillRect(2, 4, 5, 3);
+        graphics.fillStyle(highlight, 1).fillRect(3, 4, 7, 1).fillRect(5, 5, 5, 1);
+      } else {
+        graphics.fillStyle(outline, 1).fillRect(5, 7, 3, 5).fillRect(8, 8, 3, 4);
+        graphics.fillStyle(highlight, 1).fillRect(6, 8, 1, 3).fillRect(8, 9, 2, 2);
+      }
+      graphics.fillStyle(0x111217, 1).fillRect(13, 5, 1, 1);
+      graphics.fillStyle(beak, 1).fillRect(15, 6, 1, 1);
+      graphics.generateTexture(`pigeon-fly-${frame}`, 16, 12);
+    }
   }
 
   private createOrganicLightTexture(): void {

@@ -19,6 +19,18 @@ export const PLAYER_CONFIG = {
   bodyOffsetY: 7,
 } as const;
 
+export const PIGEON_CONFIG = {
+  alertRadius: 104,
+  flightRadius: 62,
+  minimumAlertMs: 260,
+  alertReleaseRadius: 138,
+  alertRelaxMs: 900,
+  returnSafeRadius: 160,
+  returnDelayMs: 4200,
+  takeoffDurationMs: 900,
+  returnDurationMs: 1150,
+} as const;
+
 export const CARD_CONFIG = {
   closeDurationMs: 520,
   openDurationMs: 720,

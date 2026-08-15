@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Collectible } from '../entities/Collectible';
 import { FireHydrant } from '../entities/FireHydrant';
+import { PigeonFlock } from '../entities/PigeonFlock';
 import { Player } from '../entities/Player';
 import { CAMERA_CONFIG, GameState, HYDRANT_CONFIG, LIGHT_CONFIG, SURFACE } from '../config/constants';
 import { AudioSystem } from '../systems/AudioSystem';
@@ -29,6 +30,7 @@ export class SurfaceScene extends Phaser.Scene {
   private player!: Player;
   private cassette!: Collectible;
   private hydrant!: FireHydrant;
+  private pigeons!: PigeonFlock;
   private particles!: ParticleSystem;
   private water!: WaterSystem;
   private cardSystem!: CardSystem;
@@ -79,6 +81,7 @@ export class SurfaceScene extends Phaser.Scene {
     this.player.on('jump-start', () => this.water.splashAt(this.player, 'jump'));
     this.player.on('land', () => this.water.splashAt(this.player, 'land'));
     this.physics.add.collider(this.player, platforms);
+    this.pigeons = new PigeonFlock(this, SURFACE.floorY);
     this.cameras.main.startFollow(this.player, true, CAMERA_CONFIG.followLerpX, CAMERA_CONFIG.followLerpY);
     this.cameras.main.setDeadzone(CAMERA_CONFIG.deadzoneWidth, CAMERA_CONFIG.deadzoneHeight);
 
@@ -113,12 +116,14 @@ export class SurfaceScene extends Phaser.Scene {
       this.cardSystem.destroy();
       this.particles.destroy();
       this.water.destroy();
+      this.pigeons.destroy();
       this.hintTimer?.destroy();
     });
   }
 
   public update(time: number, delta: number): void {
     this.player.update(time);
+    this.pigeons.update(time, this.player, this.state === GameState.PLAYING);
     this.cassette.update(time);
     this.particles.update(delta);
     this.water.update(time, delta, this.player);
