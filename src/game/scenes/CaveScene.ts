@@ -36,6 +36,12 @@ interface HangingBat {
   nextBlinkAt: number;
 }
 
+interface SpikeWarning {
+  glints: Phaser.GameObjects.Image[];
+  sparks: Phaser.GameObjects.Image[];
+  phase: number;
+}
+
 export class CaveScene extends Phaser.Scene {
   private state = GameState.CAVE_LANDING;
   private player!: Player;
@@ -46,6 +52,7 @@ export class CaveScene extends Phaser.Scene {
   private cardSystem!: CardSystem;
   private cameraEffects!: CameraEffects;
   private spikes!: Phaser.Physics.Arcade.StaticGroup;
+  private spikeWarnings: SpikeWarning[] = [];
   private hangingBats: HangingBat[] = [];
   private landed = false;
   private fromWell = false;
@@ -81,6 +88,7 @@ export class CaveScene extends Phaser.Scene {
     this.hangingBats = this.createHangingBats();
     const platforms = this.createPlatforms();
     this.spikes = this.createSpikes();
+    this.spikeWarnings = this.createSpikeWarnings();
 
     this.player = new Player(this, this.startX, 22);
     this.player.setCollideWorldBounds(true);
@@ -119,6 +127,11 @@ export class CaveScene extends Phaser.Scene {
       this.particles.destroy();
       this.hangingBats.forEach((bat) => bat.sprite.destroy());
       this.hangingBats.length = 0;
+      this.spikeWarnings.forEach((warning) => {
+        warning.glints.forEach((glint) => glint.destroy());
+        warning.sparks.forEach((spark) => spark.destroy());
+      });
+      this.spikeWarnings.length = 0;
     });
   }
 
@@ -129,6 +142,7 @@ export class CaveScene extends Phaser.Scene {
     this.finalCard.update(time);
     this.updateDizzyStars(time);
     this.updateHangingBats(time);
+    this.updateSpikeWarnings(time);
 
     if (!this.landed && this.player.isGrounded()) this.handleLanding();
 
@@ -173,6 +187,47 @@ export class CaveScene extends Phaser.Scene {
       body.setSize(7, 6).setOffset(0.5, 2);
     });
     return spikes;
+  }
+
+  private createSpikeWarnings(): SpikeWarning[] {
+    const spikePairs = [[558, 566], [838, 846], [1098, 1106]];
+    return spikePairs.map((pair, pairIndex) => ({
+      glints: pair.map((x) => this.add.image(x, CAVE.floorY + 1, 'spike')
+        .setOrigin(0.5, 1)
+        .setDepth(8)
+        .setTint(0xdce7e9)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0)),
+      sparks: pair.map((x) => this.add.image(x, CAVE.floorY - 7, 'pixel-star-cross')
+        .setDepth(9)
+        .setTint(0xf1f6f7)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0)),
+      phase: pairIndex * 370,
+    }));
+  }
+
+  private updateSpikeWarnings(time: number): void {
+    const period = 2400;
+    const flashDuration = 320;
+
+    this.spikeWarnings.forEach((warning) => {
+      const localTime = (time + warning.phase) % period;
+      const glintPulse = localTime < flashDuration
+        ? Math.sin((localTime / flashDuration) * Math.PI)
+        : 0;
+
+      warning.glints.forEach((glint, index) => {
+        const staggeredPulse = Phaser.Math.Clamp(glintPulse - index * 0.12, 0, 1);
+        glint.setAlpha(staggeredPulse * 0.78);
+      });
+
+      warning.sparks.forEach((spark, index) => {
+        const peakAt = 132 + index * 42;
+        const sparkPulse = Phaser.Math.Clamp(1 - Math.abs(localTime - peakAt) / 68, 0, 1);
+        spark.setAlpha(sparkPulse * 0.95).setScale(sparkPulse > 0.55 ? 1 : 0.75);
+      });
+    });
   }
 
   private drawCaveWorld(): void {
