@@ -24,6 +24,18 @@ interface DripSource {
   delay: number;
 }
 
+type BatEyeColor = 'yellow' | 'red';
+
+interface HangingBat {
+  sprite: Phaser.GameObjects.Sprite;
+  eyeColor: BatEyeColor;
+  phase: number;
+  index: number;
+  blinkCount: number;
+  blinkUntil: number;
+  nextBlinkAt: number;
+}
+
 export class CaveScene extends Phaser.Scene {
   private state = GameState.CAVE_LANDING;
   private player!: Player;
@@ -34,6 +46,7 @@ export class CaveScene extends Phaser.Scene {
   private cardSystem!: CardSystem;
   private cameraEffects!: CameraEffects;
   private spikes!: Phaser.Physics.Arcade.StaticGroup;
+  private hangingBats: HangingBat[] = [];
   private landed = false;
   private fromWell = false;
   private dizzyStars!: Phaser.GameObjects.Container;
@@ -65,6 +78,7 @@ export class CaveScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, CAVE.width, 230);
     this.cameras.main.setBounds(0, 0, CAVE.width, 180).setRoundPixels(true);
     this.drawCaveWorld();
+    this.hangingBats = this.createHangingBats();
     const platforms = this.createPlatforms();
     this.spikes = this.createSpikes();
 
@@ -103,6 +117,8 @@ export class CaveScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.cardSystem.destroy();
       this.particles.destroy();
+      this.hangingBats.forEach((bat) => bat.sprite.destroy());
+      this.hangingBats.length = 0;
     });
   }
 
@@ -112,6 +128,7 @@ export class CaveScene extends Phaser.Scene {
     this.lighting.update(time, this.player);
     this.finalCard.update(time);
     this.updateDizzyStars(time);
+    this.updateHangingBats(time);
 
     if (!this.landed && this.player.isGrounded()) this.handleLanding();
 
@@ -229,6 +246,9 @@ export class CaveScene extends Phaser.Scene {
       cave.fillStyle(index % 5 === 0 ? 0x244139 : 0x12221e, 0.82).fillRect(x, CAVE.floorY - height, 1, height);
     }
 
+    const flora = this.add.graphics().setDepth(1);
+    this.drawBioluminescentGrass(flora);
+
     const foreground = this.add.graphics().setDepth(18);
     foreground.fillStyle(0x020305, 0.82);
     for (let x = -10; x < CAVE.width + 30; x += 88) {
@@ -253,6 +273,88 @@ export class CaveScene extends Phaser.Scene {
     graphics.fillStyle(0x2d3437, 1).fillRect(x + 2, y + 2, width - 4, 3);
     graphics.fillStyle(0x84908b, 0.65).fillRect(x + 3, y, 7, 1).fillRect(x + width - 10, y + 1, 5, 1);
     graphics.fillStyle(0x07090a, 1).fillRect(x + Math.floor(width * 0.42), y + 2, 1, 5);
+  }
+
+  private drawBioluminescentGrass(graphics: Phaser.GameObjects.Graphics): void {
+    const clusters: Array<{ x: number; groundY: number }> = [
+      { x: 82, groundY: CAVE.floorY },
+      { x: 116, groundY: CAVE.floorY },
+      { x: 169, groundY: CAVE.floorY },
+      { x: 219, groundY: CAVE.floorY },
+      { x: 298, groundY: CAVE.floorY },
+      { x: 391, groundY: CAVE.floorY },
+      { x: 431, groundY: CAVE.floorY },
+      { x: 518, groundY: CAVE.floorY },
+      { x: 601, groundY: CAVE.floorY },
+      { x: 704, groundY: CAVE.floorY },
+      { x: 767, groundY: CAVE.floorY },
+      { x: 808, groundY: CAVE.floorY },
+      { x: 873, groundY: CAVE.floorY },
+      { x: 977, groundY: CAVE.floorY },
+      { x: 1031, groundY: CAVE.floorY },
+      { x: 1148, groundY: CAVE.floorY },
+      { x: 1262, groundY: CAVE.floorY },
+      { x: 343, groundY: 139 },
+      { x: 654, groundY: 133 },
+      { x: 918, groundY: 140 },
+      { x: 1068, groundY: 126 },
+    ];
+    const green = 0x1b422f;
+    const greenEdge = 0x315a38;
+    const yellow = 0x625c28;
+    const yellowTip = 0x817739;
+
+    clusters.forEach((cluster, index) => {
+      const bladeCount = 2 + (index % 4);
+      graphics.fillStyle(0x0d1d17, 0.9).fillRect(cluster.x - 3, cluster.groundY - 1, 7, 1);
+      for (let blade = 0; blade < bladeCount; blade += 1) {
+        const offsetX = (blade - Math.floor(bladeCount / 2)) * 2;
+        const height = 2 + ((index * 3 + blade * 2) % 4);
+        const isYellow = (index + blade * 2) % 5 === 0;
+        graphics.fillStyle(isYellow ? yellow : green, 0.92)
+          .fillRect(cluster.x + offsetX, cluster.groundY - height, 1, height);
+        const lean = (index + blade) % 2 === 0 ? -1 : 1;
+        graphics.fillStyle(isYellow ? yellowTip : greenEdge, isYellow ? 0.62 : 0.7)
+          .fillRect(cluster.x + offsetX + lean, cluster.groundY - height, 1, 1);
+      }
+    });
+  }
+
+  private createHangingBats(): HangingBat[] {
+    const placements: Array<{ x: number; y: number; eyeColor: BatEyeColor }> = [
+      { x: 142, y: 21, eyeColor: 'yellow' },
+      { x: 238, y: 22, eyeColor: 'red' },
+      { x: 430, y: 20, eyeColor: 'yellow' },
+      { x: 704, y: 23, eyeColor: 'yellow' },
+      { x: 942, y: 20, eyeColor: 'yellow' },
+      { x: 1164, y: 22, eyeColor: 'red' },
+    ];
+    return placements.map((placement, index) => ({
+      sprite: this.add.sprite(placement.x, placement.y, `bat-hanging-${placement.eyeColor}-0`)
+        .setOrigin(0.5, 0)
+        .setDepth(2),
+      eyeColor: placement.eyeColor,
+      phase: index * 317,
+      index,
+      blinkCount: 0,
+      blinkUntil: -Infinity,
+      nextBlinkAt: this.time.now + 3000 + index * 420,
+    }));
+  }
+
+  private updateHangingBats(time: number): void {
+    this.hangingBats.forEach((bat) => {
+      if (time >= bat.nextBlinkAt) {
+        bat.blinkUntil = time + 130;
+        bat.blinkCount += 1;
+        bat.nextBlinkAt = bat.blinkUntil + 3000 + ((bat.index * 733 + bat.blinkCount * 617) % 2600);
+      }
+      const breathingFrame = Math.floor((time + bat.phase) / 760) % 2;
+      const texture = time < bat.blinkUntil
+        ? `bat-hanging-${bat.eyeColor}-blink`
+        : `bat-hanging-${bat.eyeColor}-${breathingFrame}`;
+      if (bat.sprite.texture.key !== texture) bat.sprite.setTexture(texture);
+    });
   }
 
   private createWaterDrips(): void {

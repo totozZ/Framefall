@@ -450,6 +450,7 @@ export class BootScene extends Phaser.Scene {
     graphics.fillStyle(0x17131a, 1).fillRect(3, 3, 17, 10);
     graphics.fillStyle(0xe3c271, 1).fillRect(5, 5, 9, 1).fillRect(5, 8, 12, 1);
     graphics.generateTexture('world-card', 23, 16);
+    this.createBatTextures(graphics);
     this.createPigeonTextures(graphics);
     graphics.destroy();
   }
@@ -552,6 +553,77 @@ export class BootScene extends Phaser.Scene {
       graphics.fillStyle(beak, 1).fillRect(15, 6, 1, 1);
       graphics.generateTexture(`pigeon-fly-${frame}`, 16, 12);
     }
+  }
+
+  private createBatTextures(graphics: Phaser.GameObjects.Graphics): void {
+    const outline = 0x050609;
+    const body = 0x111218;
+    const wing = 0x1a151b;
+    const wingEdge = 0x292029;
+    const eyeColors = {
+      yellow: 0x8d742d,
+      red: 0x772925,
+    } as const;
+
+    (Object.keys(eyeColors) as Array<keyof typeof eyeColors>).forEach((eyeColor) => {
+      for (let frame = 0; frame < 2; frame += 1) {
+        graphics.clear();
+        graphics.fillStyle(outline, 1)
+          .fillRect(4, 0, 2, 3)
+          .fillRect(9, 0, 2, 3)
+          .fillRect(3, 2, 9, 7)
+          .fillRect(1, 3 + frame, 4, 6)
+          .fillRect(10, 3 + frame, 4, 6)
+          .fillRect(5, 7, 5, 5);
+        graphics.fillStyle(body, 1)
+          .fillRect(5, 2, 5, 7 + frame)
+          .fillRect(6, 8, 3, 3);
+        graphics.fillStyle(wing, 1)
+          .fillRect(2, 4 + frame, 3, 4)
+          .fillRect(10, 4 + frame, 3, 4)
+          .fillRect(3, 3 + frame, 3, 2)
+          .fillRect(9, 3 + frame, 3, 2);
+        graphics.fillStyle(wingEdge, 0.82)
+          .fillRect(2, 5 + frame, 1, 3)
+          .fillRect(12, 5 + frame, 1, 3)
+          .fillRect(4, 4 + frame, 1, 3)
+          .fillRect(10, 4 + frame, 1, 3);
+        graphics.fillStyle(outline, 1)
+          .fillTriangle(5, 8, 6, 11, 7, 8)
+          .fillTriangle(8, 8, 9, 11, 10, 8);
+        graphics.fillStyle(eyeColors[eyeColor], 1)
+          .fillRect(6, 9 + frame, 1, 1)
+          .fillRect(9, 9 + frame, 1, 1);
+        graphics.generateTexture(`bat-hanging-${eyeColor}-${frame}`, 15, 12);
+      }
+
+      graphics.clear();
+      graphics.fillStyle(outline, 1)
+        .fillRect(4, 0, 2, 3)
+        .fillRect(9, 0, 2, 3)
+        .fillRect(3, 2, 9, 7)
+        .fillRect(1, 3, 4, 6)
+        .fillRect(10, 3, 4, 6)
+        .fillRect(5, 7, 5, 5);
+      graphics.fillStyle(body, 1).fillRect(5, 2, 5, 8).fillRect(6, 8, 3, 3);
+      graphics.fillStyle(wing, 1)
+        .fillRect(2, 4, 3, 4)
+        .fillRect(10, 4, 3, 4)
+        .fillRect(3, 3, 3, 2)
+        .fillRect(9, 3, 3, 2);
+      graphics.fillStyle(wingEdge, 0.82)
+        .fillRect(2, 5, 1, 3)
+        .fillRect(12, 5, 1, 3)
+        .fillRect(4, 4, 1, 3)
+        .fillRect(10, 4, 1, 3);
+      graphics.fillStyle(outline, 1)
+        .fillTriangle(5, 8, 6, 11, 7, 8)
+        .fillTriangle(8, 8, 9, 11, 10, 8);
+      graphics.fillStyle(eyeColors[eyeColor], 0.42)
+        .fillRect(6, 10, 1, 1)
+        .fillRect(9, 10, 1, 1);
+      graphics.generateTexture(`bat-hanging-${eyeColor}-blink`, 15, 12);
+    });
   }
 
   private createOrganicLightTexture(): void {

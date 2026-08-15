@@ -166,20 +166,18 @@ export class SurfaceScene extends Phaser.Scene {
     sky.fillStyle(0x272831, 0.7).fillCircle(245, 38, 13);
     sky.fillStyle(0x11131b, 0.68).fillCircle(249, 35, 12);
 
+    const farRidges = this.add.graphics().setDepth(-17).setScrollFactor(0.26);
+    this.drawMountainRange(farRidges, -96, 72, 142, 31, 0x0a0d13, 0x141821, 3);
+
     const distant = this.add.graphics().setDepth(-15).setScrollFactor(0.45);
-    distant.fillStyle(0x0a0c12, 1);
-    for (let x = -30; x < SURFACE.width + 100; x += 58) {
-      const height = 22 + ((x * 13) % 25 + 25) % 25;
-      distant.fillTriangle(x, SURFACE.floorY, x + 38, SURFACE.floorY - height, x + 84, SURFACE.floorY);
-    }
+    this.drawMountainRange(distant, -48, 86, SURFACE.floorY, 45, 0x0b0d13, 0x171a22, 7);
     distant.fillStyle(0x10121a, 1).fillRect(-30, 132, SURFACE.width + 100, 28);
-    distant.fillStyle(0x151720, 1);
     for (let x = 34; x < SURFACE.width; x += 117) {
-      const trunkHeight = 15 + (x % 11);
-      distant.fillRect(x, 129 - trunkHeight, 3, trunkHeight);
-      distant.fillTriangle(x - 11, 123 - trunkHeight, x + 2, 98 - trunkHeight, x + 14, 123 - trunkHeight);
-      distant.fillTriangle(x - 8, 113 - trunkHeight, x + 3, 91 - trunkHeight, x + 12, 113 - trunkHeight);
+      this.drawDistantPine(distant, x, 134, 34 + (x % 13), Math.floor(x / 117));
     }
+
+    const ruins = this.add.graphics().setDepth(-7).setScrollFactor(0.72);
+    this.drawBrokenPillar(ruins, 190, SURFACE.floorY);
 
     const world = this.add.graphics().setDepth(0);
     world.fillStyle(0x18171b, 1).fillRect(0, SURFACE.floorY, SURFACE.wellLeft, 27);
@@ -211,6 +209,203 @@ export class SurfaceScene extends Phaser.Scene {
     this.drawWell(world);
     this.drawStoneLedge(world, 419, 136, 38);
     this.drawStoneLedge(world, 877, 139, 44);
+  }
+
+  private drawMountainRange(
+    graphics: Phaser.GameObjects.Graphics,
+    startX: number,
+    spacing: number,
+    baseY: number,
+    baseHeight: number,
+    color: number,
+    facetColor: number,
+    seed: number,
+  ): void {
+    for (let index = 0, x = startX; x < SURFACE.width + 120; index += 1, x += spacing) {
+      const width = spacing + 24 + ((index + seed) % 3) * 7;
+      const height = baseHeight + ((index * 17 + seed * 11) % 24);
+      const peakX = x + Math.floor(width * (0.38 + ((index + seed) % 4) * 0.06));
+      const peakY = baseY - height;
+      const silhouette = [
+        new Phaser.Geom.Point(x - 8, baseY),
+        new Phaser.Geom.Point(x + 2, baseY - 5),
+        new Phaser.Geom.Point(x + Math.floor(width * 0.14), baseY - Math.floor(height * 0.28)),
+        new Phaser.Geom.Point(x + Math.floor(width * 0.24), baseY - Math.floor(height * 0.42)),
+        new Phaser.Geom.Point(peakX - 8, peakY + 11),
+        new Phaser.Geom.Point(peakX - 3, peakY + 4),
+        new Phaser.Geom.Point(peakX, peakY),
+        new Phaser.Geom.Point(peakX + 5, peakY + 6),
+        new Phaser.Geom.Point(x + Math.floor(width * 0.67), baseY - Math.floor(height * 0.48)),
+        new Phaser.Geom.Point(x + Math.floor(width * 0.79), baseY - Math.floor(height * 0.31)),
+        new Phaser.Geom.Point(x + width - 3, baseY - 6),
+        new Phaser.Geom.Point(x + width + 8, baseY),
+      ];
+      graphics.fillStyle(color, 1).fillPoints(silhouette, true);
+
+      const leftFacet = [
+        new Phaser.Geom.Point(x + Math.floor(width * 0.13), baseY - 2),
+        new Phaser.Geom.Point(peakX, peakY + 1),
+        new Phaser.Geom.Point(peakX - 6, baseY - Math.floor(height * 0.31)),
+        new Phaser.Geom.Point(x + Math.floor(width * 0.38), baseY - Math.floor(height * 0.18)),
+      ];
+      graphics.fillStyle(facetColor, 0.48).fillPoints(leftFacet, true);
+
+      if ((index + seed) % 2 === 0) {
+        const rightFacet = [
+          new Phaser.Geom.Point(peakX + 2, peakY + 6),
+          new Phaser.Geom.Point(x + Math.floor(width * 0.76), baseY - Math.floor(height * 0.28)),
+          new Phaser.Geom.Point(x + Math.floor(width * 0.64), baseY - 4),
+          new Phaser.Geom.Point(x + Math.floor(width * 0.57), baseY - Math.floor(height * 0.32)),
+        ];
+        graphics.fillStyle(0x05070b, 0.34).fillPoints(rightFacet, true);
+      }
+    }
+  }
+
+  private drawDistantPine(
+    graphics: Phaser.GameObjects.Graphics,
+    x: number,
+    baseY: number,
+    height: number,
+    index: number,
+  ): void {
+    const halfWidth = 10 + (index % 3) * 2;
+    const topY = baseY - height;
+    graphics.fillStyle(0x11141b, 1).fillRect(x - 1, topY + 8, 3, height - 7);
+    graphics.fillStyle(0x151820, 1).fillPoints([
+      new Phaser.Geom.Point(x, topY),
+      new Phaser.Geom.Point(x - 5, topY + 10),
+      new Phaser.Geom.Point(x - 2, topY + 9),
+      new Phaser.Geom.Point(x - halfWidth + 3, topY + 19),
+      new Phaser.Geom.Point(x - 5, topY + 17),
+      new Phaser.Geom.Point(x - halfWidth, topY + 29),
+      new Phaser.Geom.Point(x - 4, topY + 26),
+      new Phaser.Geom.Point(x - halfWidth - 2, baseY - 2),
+      new Phaser.Geom.Point(x + halfWidth + 3, baseY - 2),
+      new Phaser.Geom.Point(x + 5, topY + 26),
+      new Phaser.Geom.Point(x + halfWidth, topY + 29),
+      new Phaser.Geom.Point(x + 4, topY + 17),
+      new Phaser.Geom.Point(x + halfWidth - 2, topY + 19),
+      new Phaser.Geom.Point(x + 3, topY + 9),
+    ], true);
+    graphics.fillStyle(0x22242a, 0.42).fillPoints([
+      new Phaser.Geom.Point(x, topY + 3),
+      new Phaser.Geom.Point(x - 3, topY + 13),
+      new Phaser.Geom.Point(x - 6, topY + 22),
+      new Phaser.Geom.Point(x, topY + 18),
+    ], true);
+  }
+
+  private drawBrokenPillar(graphics: Phaser.GameObjects.Graphics, centerX: number, baseY: number): void {
+    const outline = 0x090a0e;
+    const shadow = 0x17191f;
+    const stone = 0x292b31;
+    const face = 0x34363b;
+    const edge = 0x555653;
+
+    graphics.fillStyle(outline, 1).fillPoints([
+      new Phaser.Geom.Point(centerX - 30, baseY),
+      new Phaser.Geom.Point(centerX - 29, baseY - 9),
+      new Phaser.Geom.Point(centerX - 24, baseY - 13),
+      new Phaser.Geom.Point(centerX - 23, baseY - 79),
+      new Phaser.Geom.Point(centerX - 19, baseY - 81),
+      new Phaser.Geom.Point(centerX - 21, baseY - 88),
+      new Phaser.Geom.Point(centerX - 14, baseY - 90),
+      new Phaser.Geom.Point(centerX - 12, baseY - 97),
+      new Phaser.Geom.Point(centerX - 5, baseY - 99),
+      new Phaser.Geom.Point(centerX + 1, baseY - 92),
+      new Phaser.Geom.Point(centerX + 9, baseY - 96),
+      new Phaser.Geom.Point(centerX + 15, baseY - 89),
+      new Phaser.Geom.Point(centerX + 21, baseY - 86),
+      new Phaser.Geom.Point(centerX + 19, baseY - 79),
+      new Phaser.Geom.Point(centerX + 23, baseY - 76),
+      new Phaser.Geom.Point(centerX + 23, baseY - 13),
+      new Phaser.Geom.Point(centerX + 29, baseY - 9),
+      new Phaser.Geom.Point(centerX + 31, baseY),
+    ], true);
+
+    graphics.fillStyle(shadow, 1).fillRect(centerX - 22, baseY - 78, 44, 67);
+    graphics.fillStyle(stone, 1).fillRect(centerX - 18, baseY - 77, 35, 65);
+    graphics.fillStyle(face, 0.82).fillPoints([
+      new Phaser.Geom.Point(centerX - 13, baseY - 77),
+      new Phaser.Geom.Point(centerX + 11, baseY - 77),
+      new Phaser.Geom.Point(centerX + 14, baseY - 14),
+      new Phaser.Geom.Point(centerX - 8, baseY - 14),
+    ], true);
+    graphics.fillStyle(edge, 0.55).fillRect(centerX - 16, baseY - 76, 3, 61);
+    graphics.fillStyle(0x101116, 0.9).fillRect(centerX + 13, baseY - 74, 4, 58);
+
+    graphics.fillStyle(shadow, 1).fillPoints([
+      new Phaser.Geom.Point(centerX - 21, baseY - 78),
+      new Phaser.Geom.Point(centerX - 19, baseY - 87),
+      new Phaser.Geom.Point(centerX - 13, baseY - 89),
+      new Phaser.Geom.Point(centerX - 11, baseY - 96),
+      new Phaser.Geom.Point(centerX - 5, baseY - 98),
+      new Phaser.Geom.Point(centerX + 1, baseY - 91),
+      new Phaser.Geom.Point(centerX + 8, baseY - 95),
+      new Phaser.Geom.Point(centerX + 14, baseY - 88),
+      new Phaser.Geom.Point(centerX + 20, baseY - 85),
+      new Phaser.Geom.Point(centerX + 18, baseY - 78),
+    ], true);
+    graphics.fillStyle(stone, 1).fillPoints([
+      new Phaser.Geom.Point(centerX - 15, baseY - 79),
+      new Phaser.Geom.Point(centerX - 14, baseY - 87),
+      new Phaser.Geom.Point(centerX - 9, baseY - 89),
+      new Phaser.Geom.Point(centerX - 7, baseY - 94),
+      new Phaser.Geom.Point(centerX - 4, baseY - 95),
+      new Phaser.Geom.Point(centerX + 2, baseY - 88),
+      new Phaser.Geom.Point(centerX + 8, baseY - 92),
+      new Phaser.Geom.Point(centerX + 12, baseY - 86),
+      new Phaser.Geom.Point(centerX + 16, baseY - 83),
+      new Phaser.Geom.Point(centerX + 14, baseY - 79),
+    ], true);
+    graphics.fillStyle(face, 0.64).fillPoints([
+      new Phaser.Geom.Point(centerX - 10, baseY - 80),
+      new Phaser.Geom.Point(centerX - 7, baseY - 92),
+      new Phaser.Geom.Point(centerX - 3, baseY - 93),
+      new Phaser.Geom.Point(centerX + 2, baseY - 86),
+      new Phaser.Geom.Point(centerX + 3, baseY - 80),
+    ], true);
+    graphics.fillStyle(outline, 1)
+      .fillRect(centerX - 26, baseY - 83, 17, 5)
+      .fillRect(centerX + 7, baseY - 82, 15, 4);
+    graphics.fillStyle(stone, 1)
+      .fillRect(centerX - 23, baseY - 84, 13, 4)
+      .fillRect(centerX + 9, baseY - 83, 10, 3);
+    graphics.fillStyle(edge, 0.5)
+      .fillRect(centerX - 19, baseY - 83, 8, 1)
+      .fillRect(centerX + 10, baseY - 82, 5, 1);
+    graphics.fillStyle(outline, 1).fillRect(centerX - 27, baseY - 46, 51, 5);
+    graphics.fillStyle(stone, 1).fillRect(centerX - 23, baseY - 45, 43, 3);
+    graphics.fillStyle(edge, 0.42).fillRect(centerX - 17, baseY - 44, 18, 1);
+
+    graphics.fillStyle(0x0b0c10, 1)
+      .fillRect(centerX - 4, baseY - 72, 2, 15)
+      .fillRect(centerX - 3, baseY - 58, 8, 2)
+      .fillRect(centerX + 4, baseY - 57, 2, 13)
+      .fillRect(centerX - 11, baseY - 34, 2, 12)
+      .fillRect(centerX - 10, baseY - 24, 7, 2)
+      .fillRect(centerX + 10, baseY - 67, 11, 8);
+    graphics.fillStyle(edge, 0.4)
+      .fillRect(centerX + 5, baseY - 69, 7, 1)
+      .fillRect(centerX - 14, baseY - 52, 9, 1)
+      .fillRect(centerX + 1, baseY - 28, 10, 1);
+
+    graphics.fillStyle(outline, 1).fillRect(centerX - 32, baseY - 14, 62, 5);
+    graphics.fillStyle(stone, 1).fillRect(centerX - 28, baseY - 12, 55, 6);
+    graphics.fillStyle(face, 0.75).fillRect(centerX - 23, baseY - 11, 36, 3);
+    graphics.fillStyle(outline, 1).fillRect(centerX - 36, baseY - 7, 70, 7);
+    graphics.fillStyle(0x23252a, 1).fillRect(centerX - 31, baseY - 6, 59, 5);
+    graphics.fillStyle(edge, 0.4).fillRect(centerX - 25, baseY - 5, 27, 1);
+
+    graphics.fillStyle(outline, 1)
+      .fillRect(centerX - 42, baseY - 4, 10, 4)
+      .fillRect(centerX + 31, baseY - 5, 13, 5)
+      .fillRect(centerX + 42, baseY - 3, 8, 3);
+    graphics.fillStyle(stone, 1)
+      .fillRect(centerX - 40, baseY - 5, 7, 3)
+      .fillRect(centerX + 33, baseY - 7, 9, 4)
+      .fillRect(centerX + 43, baseY - 4, 6, 2);
   }
 
   private createCloudLayer(): void {
