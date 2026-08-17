@@ -16,63 +16,87 @@ export class ClockAltar {
     private readonly floorY: number,
     private readonly onTriggered: () => void,
   ) {
-    this.glow = scene.add.image(x, floorY - 49, 'organic-light')
+    const faceY = -CAVE.clockFaceOffsetY;
+    this.glow = scene.add.image(x, floorY + faceY, 'organic-light')
       .setTint(0xc5f2ef)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(0.72)
+      .setScale(0.95, 0.82)
       .setAlpha(0.02)
       .setDepth(4);
 
     const stone = scene.add.graphics();
-    stone.fillStyle(0x05070a, 1).fillRect(-47, -18, 94, 18);
-    stone.fillStyle(0x252b2f, 1).fillRect(-42, -16, 84, 13);
-    stone.fillStyle(0x4a5553, 1).fillRect(-38, -15, 76, 3);
+    // A broad, stepped plinth and tall buttresses give the clock a monumental
+    // silhouette while keeping the same compact pixel-art language.
+    stone.fillStyle(0x030508, 1).fillRect(-62, -9, 124, 9);
+    stone.fillStyle(0x1c2226, 1).fillRect(-59, -18, 118, 10);
+    stone.fillStyle(0x343d3e, 1).fillRect(-55, -24, 110, 7);
+    stone.fillStyle(0x596461, 0.72).fillRect(-51, -23, 102, 2);
+    stone.fillStyle(0x11161a, 1).fillRect(-48, -21, 96, 12);
     stone.fillStyle(0x11151a, 1)
-      .fillRect(-32, -12, 10, 9)
-      .fillRect(22, -11, 9, 8)
-      .fillRect(-4, -16, 6, 5);
-    stone.fillStyle(0x687570, 0.5).fillRect(-34, -14, 20, 1).fillRect(9, -14, 18, 1);
-    stone.fillStyle(0x07090c, 1).fillRect(-34, -82, 68, 9);
-    stone.fillStyle(0x252c30, 1).fillRect(-31, -78, 62, 31);
-    stone.fillStyle(0x4c5756, 0.7).fillRect(-28, -76, 4, 23);
-    stone.fillStyle(0x101419, 1).fillRect(24, -75, 5, 25);
-    stone.fillStyle(0x07090c, 1)
-      .fillRect(-37, -50, 12, 35)
-      .fillRect(25, -50, 12, 35);
-    stone.fillStyle(0x30383a, 1)
-      .fillRect(-33, -49, 8, 32)
-      .fillRect(25, -49, 8, 32);
+      .fillRect(-42, -16, 13, 7)
+      .fillRect(29, -15, 12, 6)
+      .fillRect(-6, -22, 9, 6);
+    stone.fillStyle(0x6b7873, 0.48).fillRect(-47, -20, 25, 1).fillRect(15, -20, 28, 1);
+
+    stone.fillStyle(0x05080b, 1)
+      .fillRect(-53, -84, 15, 62)
+      .fillRect(38, -84, 15, 62)
+      .fillRect(-47, -99, 94, 9);
+    stone.fillStyle(0x252d30, 1)
+      .fillRect(-49, -81, 11, 56)
+      .fillRect(38, -81, 11, 56)
+      .fillRect(-43, -95, 86, 7);
+    stone.fillStyle(0x4e5a58, 0.72)
+      .fillRect(-46, -79, 3, 49)
+      .fillRect(42, -78, 3, 48)
+      .fillRect(-39, -93, 52, 2);
+    stone.fillStyle(0x0d1216, 1)
+      .fillTriangle(-61, -22, -51, -59, -38, -22)
+      .fillTriangle(38, -22, 51, -59, 61, -22);
+    stone.fillStyle(0x30393a, 0.9)
+      .fillTriangle(-55, -23, -49, -49, -42, -23)
+      .fillTriangle(42, -23, 49, -49, 55, -23);
 
     const face = scene.add.graphics();
-    face.fillStyle(0x05090d, 1).fillCircle(0, -50, 31);
-    face.fillStyle(0x1c272d, 1).fillCircle(0, -50, 27);
-    face.lineStyle(3, 0x596966, 0.8).strokeCircle(0, -50, 24);
-    face.lineStyle(1, 0x9ab6af, 0.42).strokeCircle(0, -50, 20);
-    face.fillStyle(0x091118, 1).fillCircle(0, -50, 18);
-    face.fillStyle(0xa6c7bf, 0.8).fillRect(-1, -79, 3, 5);
+    for (let segment = 0; segment < 8; segment += 1) {
+      const start = segment * Math.PI / 4;
+      const gap = 0.09 + (segment % 3) * 0.035;
+      face.lineStyle(segment % 2 === 0 ? 3 : 2, 0x4c5a59, 0.76)
+        .beginPath()
+        .arc(0, faceY, 41, start + gap, start + Math.PI / 4 - gap)
+        .strokePath();
+    }
+    face.fillStyle(0x04080c, 1).fillCircle(0, faceY, 38);
+    face.fillStyle(0x1b262c, 1).fillCircle(0, faceY, 35);
+    face.lineStyle(3, 0x667774, 0.9).strokeCircle(0, faceY, 32);
+    face.lineStyle(1, 0xa4c0b8, 0.42).strokeCircle(0, faceY, 29);
+    face.fillStyle(0x081117, 1).fillCircle(0, faceY, 27);
 
     const ticks: Phaser.GameObjects.Rectangle[] = [];
-    for (let index = 0; index < 12; index += 1) {
-      const angle = index * Math.PI / 6 - Math.PI / 2;
+    for (let index = 0; index < 60; index += 1) {
+      const angle = index * Math.PI / 30 - Math.PI / 2;
+      const isQuarter = index % 15 === 0;
+      const isHour = index % 5 === 0;
+      const radius = isQuarter ? 25 : isHour ? 26 : 27;
       ticks.push(scene.add.rectangle(
-        Math.cos(angle) * 21,
-        -50 + Math.sin(angle) * 21,
-        index % 3 === 0 ? 4 : 2,
-        1,
-        index === 0 ? 0xe3f6ef : 0x6b7a76,
-        index === 0 ? 0.95 : 0.68,
+        Math.cos(angle) * radius,
+        faceY + Math.sin(angle) * radius,
+        isQuarter ? 5 : isHour ? 3 : 1,
+        isQuarter ? 2 : 1,
+        isQuarter ? 0xdff6ef : isHour ? 0x8ba29c : 0x52625f,
+        isQuarter ? 0.94 : isHour ? 0.78 : 0.58,
       ).setRotation(angle));
     }
 
     // Midnight is straight up. The hour hand is fixed; real elapsed time drives
     // the minute hand so losing focus cannot reset its 25 s lap.
-    const hourHand = scene.add.rectangle(0, -50, 3, 13, 0xc5ddd6, 1)
+    const hourHand = scene.add.rectangle(0, faceY, 4, 17, 0xc5ddd6, 1)
       .setOrigin(0.5, 1)
       .setAngle(0);
-    this.minuteHand = scene.add.rectangle(0, -50, 1, 20, 0xf0fffb, 1)
+    this.minuteHand = scene.add.rectangle(0, faceY, 1, 27, 0xf0fffb, 1)
       .setOrigin(0.5, 1)
       .setAngle(0);
-    const pin = scene.add.rectangle(0, -50, 3, 3, 0xf2fff9, 1);
+    const pin = scene.add.rectangle(0, faceY, 4, 4, 0xf2fff9, 1);
     this.root = scene.add.container(x, floorY, [stone, face, ...ticks, hourHand, this.minuteHand, pin])
       .setDepth(5)
       .setAlpha(0.38);

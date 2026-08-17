@@ -96,7 +96,6 @@ export const SURFACE = {
   floorY: 153,
   cassetteX: 320,
   hydrantX: 690,
-  meteorTriggerX: 632,
   wellLeft: 1100,
   wellRight: 1152,
 } as const;
@@ -108,6 +107,7 @@ export const CAVE = {
   clockAltarX: 1740,
   hiddenWalkDurationMs: 2000,
   altarCameraPanMs: 1900,
+  clockFaceOffsetY: 58,
   clockRotationMs: 25_000,
   clockAlignmentWindowDegrees: 5,
 } as const;
@@ -118,7 +118,6 @@ export const METEOR_CONFIG = {
   reentryAtMs: 135_000,
   lockPlayerAtMs: 178_000,
   pathSamples: 48,
-  initialSpeed: 1.4,
   path: {
     start: { x: 28, y: 17 },
     control: { x: 142, y: 31 },

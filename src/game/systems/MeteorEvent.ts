@@ -161,7 +161,6 @@ export class MeteorEvent {
   private readonly particles: MeteorParticlePool;
   private readonly pathSamples: PathSample[];
   private readonly pathLength: number;
-  private readonly acceleration: number;
   private readonly gradeMultiply: Phaser.GameObjects.Rectangle;
   private readonly gradeAdd: Phaser.GameObjects.Rectangle;
   private fragments: MeteorFragment[] = [];
@@ -182,11 +181,6 @@ export class MeteorEvent {
     this.pathSamples = this.createPathSamples();
     const finalSample = this.pathSamples[this.pathSamples.length - 1];
     this.pathLength = finalSample?.distance ?? 1;
-    const durationSeconds = METEOR_CONFIG.totalDurationMs / 1000;
-    this.acceleration = Math.max(
-      0,
-      2 * (this.pathLength - METEOR_CONFIG.initialSpeed * durationSeconds) / durationSeconds ** 2,
-    );
     this.gradeMultiply = scene.add.rectangle(0, 0, 320, 180, 0x17354a, 0.06)
       .setOrigin(0)
       .setScrollFactor(0)
@@ -216,10 +210,6 @@ export class MeteorEvent {
     this.lastSceneTime = sceneTime;
     this.particles.update(deltaMs);
 
-    if (elapsed >= METEOR_CONFIG.totalDurationMs) {
-      this.startImpact();
-      return;
-    }
     if (elapsed >= METEOR_CONFIG.lockPlayerAtMs && !this.playerLocked) {
       this.playerLocked = true;
       this.options.onLockPlayer();
@@ -230,16 +220,12 @@ export class MeteorEvent {
       : elapsed >= METEOR_CONFIG.fractureAtMs ? MeteorPhase.FRACTURE : MeteorPhase.COLD;
     if (elapsed >= METEOR_CONFIG.fractureAtMs && !this.fractured) this.createFragments(true);
 
-    const elapsedSeconds = elapsed / 1000;
-    const travelled = Math.min(
-      this.pathLength,
-      METEOR_CONFIG.initialSpeed * elapsedSeconds + 0.5 * this.acceleration * elapsedSeconds ** 2,
-    );
+    const progress = elapsed / METEOR_CONFIG.totalDurationMs;
+    const travelled = this.pathLength * Phaser.Math.Easing.Sine.Out(progress);
     const pathT = this.getPathT(travelled);
     const point = this.getPathPoint(pathT);
     const tangent = this.getPathTangent(pathT);
     const rotation = Math.atan2(tangent.y, tangent.x);
-    const progress = elapsed / METEOR_CONFIG.totalDurationMs;
     this.visual.root.setPosition(point.x, point.y).setRotation(rotation);
 
     const warmBlend = this.smoothStep(
@@ -262,6 +248,7 @@ export class MeteorEvent {
 
     const heat = Phaser.Math.Clamp((elapsed - METEOR_CONFIG.fractureAtMs) / 90_000, 0, 1);
     AudioSystem.instance.setMeteorRumble(heat);
+    if (elapsed >= METEOR_CONFIG.totalDurationMs) this.startImpact();
   }
 
   public destroy(): void {

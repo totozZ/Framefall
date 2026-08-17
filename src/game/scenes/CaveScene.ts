@@ -762,7 +762,7 @@ export class CaveScene extends Phaser.Scene {
     camera.stopFollow();
     const focusX = this.player.x;
     const focusY = this.player.y - 9;
-    const clockFaceY = CAVE.floorY - 50;
+    const clockFaceY = CAVE.floorY - CAVE.clockFaceOffsetY;
 
     // A broken clock dial folds inward instead of covering the whole scene in
     // a generic white fade. Its uneven arcs retain the cave's pixel language.

@@ -113,13 +113,11 @@ export class SurfaceScene extends Phaser.Scene {
       this.state = GameState.PLAYING;
       this.player.setControlEnabled(true);
       AudioSystem.instance.ambience('surface');
+      this.startMeteorForPlayableState();
     } else {
       this.createIntroReveal();
     }
     if (import.meta.env.DEV && this.previewWater) this.water.start();
-    if (import.meta.env.DEV && this.previewMeteorElapsedMs !== undefined) {
-      this.startMeteorEvent(Date.now() - this.previewMeteorElapsedMs);
-    }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.cardSystem.destroy();
       this.particles.destroy();
@@ -144,16 +142,18 @@ export class SurfaceScene extends Phaser.Scene {
 
     const velocityX = (this.player.body as Phaser.Physics.Arcade.Body).velocity.x;
     this.cameras.main.setFollowOffset(-Math.sign(velocityX) * CAMERA_CONFIG.lookAhead, 0);
-    this.tryTriggerMeteor();
 
     if (this.state === GameState.PLAYING && this.player.x > SURFACE.wellLeft && this.player.x < SURFACE.wellRight && this.player.y > 168) {
       this.enterWell();
     }
   }
 
-  private tryTriggerMeteor(): void {
-    if (this.meteor || this.state !== GameState.PLAYING || this.player.x < SURFACE.meteorTriggerX) return;
-    this.startMeteorEvent(Date.now());
+  private startMeteorForPlayableState(): void {
+    const previewElapsedMs = import.meta.env.DEV ? this.previewMeteorElapsedMs : undefined;
+    const startedAtEpochMs = previewElapsedMs === undefined
+      ? Date.now()
+      : Date.now() - previewElapsedMs;
+    this.startMeteorEvent(startedAtEpochMs);
   }
 
   private startMeteorEvent(startedAtEpochMs: number): void {
@@ -604,6 +604,7 @@ export class SurfaceScene extends Phaser.Scene {
                 this.state = GameState.PLAYING;
                 this.player.setControlEnabled(true);
                 AudioSystem.instance.ambience('surface');
+                this.startMeteorForPlayableState();
                 this.showControlsHint();
               },
             });
